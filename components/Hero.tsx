@@ -1,9 +1,17 @@
+"use client";
+import { useState } from "react";
+import ApplyModal from "./ApplyModal";
+
 export default function Hero() {
+  const [open, setOpen] = useState(false);
+
   return (
     <section
       className="min-h-screen flex flex-col md:flex-row"
       style={{ paddingTop: "56px" }}
     >
+      {open && <ApplyModal onClose={() => setOpen(false)} />}
+
       {/* LEFT — text panel */}
       <div
         className="flex flex-col justify-center px-8 md:px-16 py-20 md:py-0 w-full md:w-1/2"
@@ -52,9 +60,9 @@ export default function Hero() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <a href="#einkapjalfun" className="btn-primary text-center">
+          <button onClick={() => setOpen(true)} className="btn-primary text-center">
             SÆKJA UM EINKAÞJÁLFUN
-          </a>
+          </button>
           <a href="#coach" className="btn-outline text-center">
             360 HEILSA ONLINE COACH →
           </a>
@@ -62,24 +70,36 @@ export default function Hero() {
       </div>
 
       {/* RIGHT — photo panel */}
-      <div className="relative w-full md:w-1/2" style={{ minHeight: "60vw" }}>
+      <div
+        className="relative w-full md:w-1/2"
+        style={{ height: "70vw", maxHeight: "100vh", minHeight: "320px" }}
+      >
         <div
           style={{
             position: "absolute",
             inset: 0,
             backgroundImage: "url('/hero.jpg')",
             backgroundSize: "cover",
-            backgroundPosition: "55% 85%",
+            backgroundPosition: "55% 75%",
             backgroundRepeat: "no-repeat",
           }}
         />
-        {/* Subtle left-edge fade to blend into text panel */}
+        {/* Top fade on mobile */}
         <div
+          className="md:hidden"
           style={{
             position: "absolute",
             inset: 0,
-            background:
-              "linear-gradient(to right, var(--background) 0%, transparent 12%)",
+            background: "linear-gradient(to bottom, var(--background) 0%, transparent 20%)",
+          }}
+        />
+        {/* Left fade on desktop */}
+        <div
+          className="hidden md:block"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to right, var(--background) 0%, transparent 12%)",
           }}
         />
       </div>

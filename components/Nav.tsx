@@ -15,12 +15,13 @@ export default function Nav() {
           <Image
             src="/logo.png"
             alt="360 Heilsa"
-            width={110}
-            height={36}
+            width={100}
+            height={32}
             style={{ objectFit: "contain", objectPosition: "left center" }}
           />
         </a>
-        <div className="flex gap-8">
+        {/* Nav links — hidden on small screens */}
+        <div className="hidden sm:flex gap-8">
           <a href="#einkapjalfun" className="text-sm nav-link">
             Einkaþjálfun
           </a>
@@ -28,6 +29,14 @@ export default function Nav() {
             360 Heilsa Online Coach
           </a>
         </div>
+        {/* Mobile CTA */}
+        <a
+          href="#einkapjalfun"
+          className="sm:hidden text-xs btn-primary"
+          style={{ padding: "8px 16px" }}
+        >
+          UMSÓKN
+        </a>
       </div>
     </nav>
   );

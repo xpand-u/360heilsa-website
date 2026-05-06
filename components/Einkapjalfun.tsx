@@ -1,9 +1,14 @@
+"use client";
+import { useState } from "react";
+import ApplyModal from "./ApplyModal";
+
 export default function Einkapjalfun() {
-  const applyHref =
-    "mailto:rafn@360heilsa.is?subject=Umsókn%20um%20einkaþjálfun&body=Nafn%3A%0AMarkmið%3A%0AHvenær%20getur%20þú%20mætt%3A%0A";
+  const [open, setOpen] = useState(false);
 
   return (
     <section id="einkapjalfun" className="section-divider py-28 px-6">
+      {open && <ApplyModal onClose={() => setOpen(false)} />}
+
       <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
         <div>
           <p
@@ -31,9 +36,9 @@ export default function Einkapjalfun() {
           <p className="mb-10" style={{ color: "var(--muted)", fontSize: "0.95rem" }}>
             Þjálfunin fer fram í Hreyfingu Heilsulind í Glæsibæ, Reykjavík.
           </p>
-          <a href={applyHref} className="btn-primary">
+          <button onClick={() => setOpen(true)} className="btn-primary">
             SENDA UMSÓKN
-          </a>
+          </button>
         </div>
 
         <div className="p-8" style={{ border: "1px solid var(--border)" }}>
@@ -56,9 +61,7 @@ export default function Einkapjalfun() {
                 className="flex items-start gap-3 text-sm leading-relaxed"
                 style={{ color: "var(--foreground)" }}
               >
-                <span style={{ color: "var(--accent)", flexShrink: 0, marginTop: "2px" }}>
-                  ✓
-                </span>
+                <span style={{ color: "var(--accent)", flexShrink: 0, marginTop: "2px" }}>✓</span>
                 {item}
               </li>
             ))}
