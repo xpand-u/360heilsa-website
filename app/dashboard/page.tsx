@@ -59,7 +59,7 @@ export default async function Dashboard() {
   // Week sessions from sessions table
   const sessionsRes = week
     ? await sb
-        .table("sessions")
+        .from("sessions")
         .select("*")
         .eq("athlete_id", ATHLETE_ID)
         .gte("scheduled_date", week.week_start_date)
