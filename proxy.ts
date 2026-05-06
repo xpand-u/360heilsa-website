@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Only protect /dashboard routes (not login)
-  if (!pathname.startsWith("/dashboard") || pathname.startsWith("/dashboard/login")) {
+  // Only protect /dashboard routes (not login or connect)
+  if (!pathname.startsWith("/dashboard") || pathname.startsWith("/dashboard/login") || pathname.startsWith("/dashboard/connect")) {
     return NextResponse.next();
   }
 
