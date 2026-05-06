@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase-server";
+
+const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
+
+export async function POST(req: NextRequest) {
+  const { notes, sessionDate } = await req.json();
+  const sb = createServerClient();
+  const today = new Date().toISOString().split("T")[0];
+
+  // Mark session as completed in sessions table
+  const dateToMark = sessionDate || today;
+  await sb.from("sessions")
+    .update({ status: "completed" })
+    .eq("athlete_id", ATHLETE_ID)
+    .eq("scheduled_date", dateToMark);
+
+  // Update sessions_completed count in weekly_state
+  const weekRes = await sb.from("weekly_state").select("*")
+    .eq("athlete_id", ATHLETE_ID)
+    .order("week_start_date", { ascending: false })
+    .limit(1).maybeSingle();
+
+  if (weekRes.data) {
+    await sb.from("weekly_state")
+      .update({ sessions_completed: (weekRes.data.sessions_completed || 0) + 1 })
+      .eq("id", weekRes.data.id);
+  }
+
+  // Add notes to scratch if provided
+  if (notes?.trim()) {
+    const time = new Date().toLocaleTimeString("is-IS", { hour: "2-digit", minute: "2-digit" });
+    const scratchRes = await sb.from("session_scratch").select("*")
+      .eq("athlete_id", ATHLETE_ID)
+      .eq("scratch_date", today)
+      .eq("scratch_status", "active")
+      .maybeSingle();
+
+    if (scratchRes.data) {
+      const entries = [...(scratchRes.data.entries || []), { time, note: `[Lokið] ${notes}` }];
+      await sb.from("session_scratch").update({ entries, scratch_status: "processed" })
+        .eq("id", scratchRes.data.id);
+    }
+  }
+
+  return NextResponse.json({ ok: true });
+}
