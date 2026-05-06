@@ -45,10 +45,10 @@ export default async function Dashboard() {
 
   // Fetch all data in parallel
   const [nextSessionRes, weeklyStateRes, healthRes, blockRes] = await Promise.all([
-    sb.table("next_session").select("*").eq("athlete_id", ATHLETE_ID).single(),
-    sb.table("weekly_state").select("*").eq("athlete_id", ATHLETE_ID).order("week_start_date", { ascending: false }).limit(1).single(),
-    sb.table("health_metrics").select("*").eq("athlete_id", ATHLETE_ID).eq("metric_date", today).maybeSingle(),
-    sb.table("training_blocks").select("*").eq("athlete_id", ATHLETE_ID).eq("status", "active").maybeSingle(),
+    sb.from("next_session").select("*").eq("athlete_id", ATHLETE_ID).single(),
+    sb.from("weekly_state").select("*").eq("athlete_id", ATHLETE_ID).order("week_start_date", { ascending: false }).limit(1).single(),
+    sb.from("health_metrics").select("*").eq("athlete_id", ATHLETE_ID).eq("metric_date", today).maybeSingle(),
+    sb.from("training_blocks").select("*").eq("athlete_id", ATHLETE_ID).eq("status", "active").maybeSingle(),
   ]);
 
   const session = nextSessionRes.data;
