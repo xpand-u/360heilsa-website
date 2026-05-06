@@ -158,8 +158,9 @@ export default function DashboardClient() {
     </div>
   );
 
-  const { session, week, weekSessions, health, block, limitations, insights } = data;
+  const { session, week, weekSessions, health, block, limitations, insights, healthDate, today } = data;
   const readiness = health?.readiness_call || "unknown";
+  const healthIsStale = healthDate && healthDate !== today;
   const rc = READINESS_CONFIG[readiness];
   const shoulder = limitations?.find((l: any) => l.limitation_type === "shoulder");
 
@@ -211,7 +212,16 @@ export default function DashboardClient() {
             display: "flex", alignItems: "center", gap: "32px", flexWrap: "wrap",
           }}>
             <div>
-              <Label>Líðan í dag</Label>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted }}>
+                  Líðan í dag
+                </p>
+                {healthIsStale && (
+                  <span style={{ fontSize: "9px", padding: "1px 6px", borderRadius: "4px", background: T.yellow + "22", color: T.yellow, letterSpacing: "0.06em" }}>
+                    {healthDate}
+                  </span>
+                )}
+              </div>
               <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "3rem", letterSpacing: "0.06em", color: rc.color, lineHeight: 1 }}>
                 {rc.labelIs.toUpperCase()}
               </div>
@@ -223,6 +233,22 @@ export default function DashboardClient() {
               <StatPill label="Recovery" value={health?.ultrahuman_score ?? "—"} color={health?.ultrahuman_score ? T.accent : T.muted} />
               <StatPill label="RHR (bpm)" value={health?.resting_hr ?? "—"} color={health?.resting_hr ? T.text : T.muted} />
             </div>
+            {(insights?.avgHrv30d || insights?.sleep7d) && (
+              <>
+                <div style={{ width: "1px", height: "48px", background: T.border2, flexShrink: 0 }} />
+                <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
+                  {insights.avgHrv30d > 0 && (
+                    <StatPill label="HRV avg 30d" value={insights.avgHrv30d} color={T.muted} />
+                  )}
+                  {insights.sleep7d > 0 && (
+                    <StatPill label="Svefn avg 7d" value={insights.sleep7d + "h"} color={T.muted} />
+                  )}
+                  {insights.sleep30d > 0 && (
+                    <StatPill label="Svefn avg 30d" value={insights.sleep30d + "h"} color={T.muted} />
+                  )}
+                </div>
+              </>
+            )}
             {health?.notes && health.notes !== "Vault initialized. No data yet. Update this tomorrow morning." && (
               <>
                 <div style={{ width: "1px", height: "48px", background: T.border2 }} />
@@ -344,7 +370,7 @@ export default function DashboardClient() {
                   <CardHeader left="Þessi Vika" right={week?.kids_week ? <Badge color="#bc8cff">Barnsvika</Badge> : undefined} />
                   <div style={{ padding: "8px 16px 12px" }}>
                     {weekSessions.map((s: any) => {
-                      const isToday = s.scheduled_date === data.today;
+                      const isToday = s.scheduled_date === today;
                       const isDone = s.status === "completed";
                       const isMissed = s.status === "missed";
                       return (
@@ -445,7 +471,7 @@ export default function DashboardClient() {
           {nav === "week" && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
               {weekSessions.map((s: any) => {
-                const isToday = s.scheduled_date === data.today;
+                const isToday = s.scheduled_date === today;
                 const isDone = s.status === "completed";
                 return (
                   <Card key={s.id} style={{ border: isToday ? `1px solid ${T.accent}` : undefined }}>

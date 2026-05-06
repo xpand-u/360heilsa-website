@@ -68,8 +68,19 @@ export async function GET() {
 
   const session = nextSessionRes.data;
   const week = weeklyStateRes.data;
-  const health = healthRes.data;
   const block = blockRes.data;
+
+  // If no health data for today, fall back to most recent row
+  let health = healthRes.data;
+  let healthDate = today;
+  if (!health) {
+    const fallbackRes = await sb.from("health_metrics")
+      .select("*").eq("athlete_id", ATHLETE_ID)
+      .order("metric_date", { ascending: false })
+      .limit(1).maybeSingle();
+    health = fallbackRes.data;
+    healthDate = fallbackRes.data?.metric_date || today;
+  }
   const limitations = limitationsRes.data || [];
   const weekSessions = sessionsRes.data || [];
   const recentLogs = logsRes.data || [];
@@ -89,6 +100,7 @@ export async function GET() {
 
   return NextResponse.json({
     today,
+    healthDate,
     todayStr: new Date().toLocaleDateString("is-IS", {
       weekday: "long", month: "long", day: "numeric",
     }),
