@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (scratchRes.data) {
-      const entries = [...(scratchRes.data.entries || []), { time, note: `[Lokið] ${notes}` }];
+      const entries = [...(scratchRes.data.entries || []), { time, note: `[Done] ${notes}` }];
       await sb.from("session_scratch").update({ entries, scratch_status: "processed" })
         .eq("id", scratchRes.data.id);
     }

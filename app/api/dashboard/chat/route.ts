@@ -261,7 +261,7 @@ Your role:
 - Use tools to log notes or mark sessions done when asked — do it, don't just describe it
 - Be concise. Bullet points over paragraphs. No fluff.
 - If readiness is red or yellow, proactively suggest adjustments.
-- Respond in Icelandic if the user writes in Icelandic, English if in English.`;
+- Always respond in English.`;
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({

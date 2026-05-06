@@ -18,11 +18,11 @@ const T = {
   blue:      "#58a6ff",
 };
 
-const READINESS_CONFIG: Record<string, { color: string; bg: string; labelIs: string }> = {
-  green:   { color: T.green,  bg: "rgba(63,185,80,0.08)",   labelIs: "Grænt"   },
-  yellow:  { color: T.yellow, bg: "rgba(210,153,34,0.08)",  labelIs: "Gult"    },
-  red:     { color: T.red,    bg: "rgba(248,81,73,0.08)",   labelIs: "Rautt"   },
-  unknown: { color: T.muted,  bg: "transparent",            labelIs: "Óþekkt"  },
+const READINESS_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
+  green:   { color: T.green,  bg: "rgba(63,185,80,0.08)",   label: "Green"   },
+  yellow:  { color: T.yellow, bg: "rgba(210,153,34,0.08)",  label: "Yellow"  },
+  red:     { color: T.red,    bg: "rgba(248,81,73,0.08)",   label: "Red"     },
+  unknown: { color: T.muted,  bg: "transparent",            label: "Unknown" },
 };
 
 const SESSION_ICONS: Record<string, string> = {
@@ -188,7 +188,7 @@ export default function DashboardClient() {
         setBrief(buf);
       }
     } catch {
-      setBrief("Villa við að búa til dagskrá.");
+      setBrief("Error generating brief. Try again.");
     } finally {
       setBriefLoading(false);
     }
@@ -227,11 +227,10 @@ export default function DashboardClient() {
         setChatMsgs(p => { const u = [...p]; u[u.length - 1] = { role: "assistant", content: buf }; return u; });
       }
     } catch {
-      setChatMsgs(p => { const u = [...p]; u[u.length - 1] = { role: "assistant", content: "Villa. Reyndu aftur." }; return u; });
+      setChatMsgs(p => { const u = [...p]; u[u.length - 1] = { role: "assistant", content: "Error. Try again." }; return u; });
     } finally {
       setStreaming(false);
-      // If the response logged a note, refresh data
-      if (buf.toLowerCase().includes("logged") || buf.includes("skráð") || buf.includes("Lokið")) {
+      if (buf.toLowerCase().includes("logged") || buf.toLowerCase().includes("marked")) {
         fetchData();
       }
     }
@@ -239,7 +238,7 @@ export default function DashboardClient() {
 
   if (!data) return (
     <div style={{ background: T.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <p style={{ color: T.muted, fontFamily: "sans-serif", letterSpacing: "0.1em", fontSize: "12px" }}>HLEÐUR…</p>
+      <p style={{ color: T.muted, fontFamily: "sans-serif", letterSpacing: "0.1em", fontSize: "12px" }}>LOADING…</p>
     </div>
   );
 
@@ -250,13 +249,12 @@ export default function DashboardClient() {
   const blockWeekPct  = block ? Math.min(100, Math.round((block.week / block.planned_weeks) * 100)) : 0;
   const healthIsStale = healthDate && healthDate !== today;
 
-  // Sparkline data from health history
   const healthHistory: any[] = data.healthHistory || [];
   const hrvValues   = healthHistory.map((r: any) => r.hrv_sdnn).filter(Boolean);
   const sleepValues = healthHistory.map((r: any) => r.sleep_total_h).filter(Boolean);
   const rhrValues   = healthHistory.map((r: any) => r.resting_hr).filter(Boolean);
 
-  // ── Chat panel (shared between desktop sidebar and mobile overlay)
+  // ── Chat panel ───────────────────────────────────────────────────────────────
   const ChatPanel = (
     <div style={{
       width: isMobile ? "100%" : "360px",
@@ -268,14 +266,13 @@ export default function DashboardClient() {
       flexDirection: "column",
       height: isMobile ? "420px" : "auto",
     }}>
-      {/* Chat header */}
       <div style={{ padding: "14px 18px", borderBottom: `1px solid ${T.border}`, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.1rem", letterSpacing: "0.08em", color: T.accent }}>
             360 HEILSA COACH
           </div>
           <div style={{ fontSize: "11px", color: T.muted, marginTop: "2px" }}>
-            Spurðu um æfinguna · Biðdu um leiðréttingar · Skráðu líðan
+            Ask about today's session · Adjust load · Log notes
           </div>
         </div>
         {isMobile && (
@@ -283,18 +280,17 @@ export default function DashboardClient() {
         )}
       </div>
 
-      {/* Messages */}
       <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
         {chatMsgs.length === 0 && (
           <div style={{ marginTop: "16px" }}>
             <p style={{ color: T.muted, fontSize: "12px", textAlign: "center", marginBottom: "16px" }}>
-              Hvernig get ég hjálpað þér í dag?
+              How can I help you today?
             </p>
             {[
-              "Hvernig líður þér í dag?",
-              "Hverjar eru áherslurnar í æfingunni?",
-              "Á ég að létta á þungan?",
-              "Skráðu að ég fór í hlýjunarleik",
+              "How are you feeling today?",
+              "What are the key focuses for this session?",
+              "Should I reduce the load?",
+              "Log that I finished my warm-up",
             ].map(q => (
               <button key={q} onClick={() => sendChat(q)} style={{
                 display: "block", width: "100%", textAlign: "left",
@@ -321,14 +317,13 @@ export default function DashboardClient() {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Chat input */}
       <div style={{ padding: "12px 16px", borderTop: `1px solid ${T.border}`, flexShrink: 0 }}>
         <div style={{ display: "flex", gap: "8px" }}>
           <input
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendChat()}
-            placeholder="Skrifaðu hér…"
+            placeholder="Type here…"
             disabled={streaming}
             style={{
               flex: 1, background: T.surface2, border: `1px solid ${T.border}`,
@@ -358,7 +353,7 @@ export default function DashboardClient() {
             360 HEILSA
           </span>
           <div style={{ display: "flex", gap: "2px" }}>
-            {([["today", "Í DAG"], ["week", "VIKAN"], ["history", "SAGA"]] as [NavItem, string][]).map(([id, label]) => (
+            {([["today", "TODAY"], ["week", "WEEK"], ["history", "HISTORY"]] as [NavItem, string][]).map(([id, label]) => (
               <button key={id} onClick={() => setNav(id)} style={{
                 border: "none", cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
                 fontSize: isMobile ? "0.75rem" : "0.9rem", letterSpacing: "0.08em",
@@ -372,7 +367,7 @@ export default function DashboardClient() {
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {!isMobile && lastRefreshed && (
             <span style={{ fontSize: "10px", color: T.muted }}>
-              {lastRefreshed.toLocaleTimeString("is-IS", { hour: "2-digit", minute: "2-digit" })}
+              {lastRefreshed.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
           <button onClick={fetchData} disabled={refreshing} style={{
@@ -394,10 +389,10 @@ export default function DashboardClient() {
             letterSpacing: "0.06em", padding: "4px 10px",
             fontFamily: "'BebasNeue', sans-serif",
           }}>
-            {chatOpen ? (isMobile ? "×" : "LOKA") : "COACH"}
+            {chatOpen ? (isMobile ? "×" : "CLOSE") : "COACH"}
           </button>
           {!isMobile && (
-            <a href="/" style={{ fontSize: "11px", color: T.muted, textDecoration: "none" }}>← VEFSÍÐA</a>
+            <a href="/" style={{ fontSize: "11px", color: T.muted, textDecoration: "none" }}>← WEBSITE</a>
           )}
         </div>
       </div>
@@ -413,11 +408,10 @@ export default function DashboardClient() {
             borderRadius: "14px", padding: isMobile ? "16px" : "20px 28px", marginBottom: "16px",
             border: `1px solid ${rc.color}40`, background: rc.bg,
           }}>
-            {/* Top row: readiness + stats */}
-            <div style={{ display: "flex", alignItems: "center", gap: "24px", flexWrap: "wrap", marginBottom: (insights?.avgHrv30d || insights?.sleep7d) ? "16px" : "0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "24px", flexWrap: "wrap", marginBottom: (hrvValues.length > 1 || sleepValues.length > 1) ? "16px" : "0" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                  <Label>Líðan í dag</Label>
+                  <Label>Today&apos;s Readiness</Label>
                   {healthIsStale && (
                     <span style={{ fontSize: "9px", padding: "1px 6px", borderRadius: "4px", background: T.yellow + "22", color: T.yellow, letterSpacing: "0.06em", marginBottom: "6px" }}>
                       {healthDate}
@@ -427,20 +421,20 @@ export default function DashboardClient() {
                     background: "none", border: `1px solid ${T.border}`, borderRadius: "4px",
                     color: T.muted, cursor: "pointer", fontSize: "9px", padding: "1px 7px",
                     fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.08em", marginBottom: "6px",
-                  }}>+ SKRÁ</button>
+                  }}>+ LOG</button>
                 </div>
                 <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: isMobile ? "2.4rem" : "3rem", letterSpacing: "0.06em", color: rc.color, lineHeight: 1 }}>
-                  {rc.labelIs.toUpperCase()}
+                  {rc.label.toUpperCase()}
                 </div>
               </div>
 
               <div style={{ width: "1px", height: "48px", background: T.border2, flexShrink: 0 }} />
 
               <div style={{ display: "flex", gap: isMobile ? "20px" : "32px", flexWrap: "wrap" }}>
-                <StatPill label="HRV (ms)"   value={health?.hrv_sdnn      ?? "—"} color={health?.hrv_sdnn      ? T.text : T.muted} />
-                <StatPill label="Svefn (h)"  value={health?.sleep_total_h ?? "—"} color={health?.sleep_total_h ? T.text : T.muted} />
+                <StatPill label="HRV (ms)"   value={health?.hrv_sdnn       ?? "—"} color={health?.hrv_sdnn       ? T.text : T.muted} />
+                <StatPill label="Sleep (h)"  value={health?.sleep_total_h  ?? "—"} color={health?.sleep_total_h  ? T.text : T.muted} />
                 <StatPill label="Recovery"   value={health?.ultrahuman_score ?? "—"} color={health?.ultrahuman_score ? T.accent : T.muted} />
-                <StatPill label="RHR (bpm)"  value={health?.resting_hr    ?? "—"} color={health?.resting_hr    ? T.text : T.muted} />
+                <StatPill label="RHR (bpm)"  value={health?.resting_hr     ?? "—"} color={health?.resting_hr     ? T.text : T.muted} />
               </div>
 
               {health?.notes && health.notes !== "Vault initialized. No data yet. Update this tomorrow morning." && (
@@ -451,12 +445,9 @@ export default function DashboardClient() {
               )}
             </div>
 
-            {/* Sparklines + averages row */}
+            {/* Sparklines */}
             {(hrvValues.length > 1 || sleepValues.length > 1) && (
-              <div style={{
-                display: "flex", gap: "24px", flexWrap: "wrap",
-                paddingTop: "14px", borderTop: `1px solid ${rc.color}20`,
-              }}>
+              <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", paddingTop: "14px", borderTop: `1px solid ${rc.color}20` }}>
                 {hrvValues.length > 1 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     <div style={{ fontSize: "9px", color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em" }}>
@@ -469,7 +460,7 @@ export default function DashboardClient() {
                 {sleepValues.length > 1 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     <div style={{ fontSize: "9px", color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                      Svefn 30d
+                      Sleep 30d
                       {insights?.sleep7d ? <span style={{ color: T.text, marginLeft: "6px" }}>{insights.sleep7d}h avg (7d)</span> : null}
                     </div>
                     <Sparkline values={sleepValues} color={T.blue} width={isMobile ? 80 : 100} />
@@ -499,26 +490,24 @@ export default function DashboardClient() {
                   padding: "10px 20px", fontFamily: "'BebasNeue', sans-serif",
                   display: "flex", alignItems: "center", gap: "8px",
                 }}>
-                  ☀ BÚA TIL MORGUNÁÆTLUN
+                  ☀ GENERATE MORNING BRIEF
                 </button>
               )}
               {(brief || briefLoading) && (
                 <Card>
                   <CardHeader
-                    left="Morgunáætlun"
+                    left="Morning Brief"
                     right={
                       brief && !briefLoading ? (
                         <button onClick={generateBrief} style={{
                           background: "none", border: `1px solid ${T.border}`, borderRadius: "6px",
                           color: T.muted, cursor: "pointer", fontSize: "10px", padding: "2px 8px",
-                        }}>↺ Endurgera</button>
+                        }}>↺ Regenerate</button>
                       ) : undefined
                     }
                   />
                   <div style={{ padding: "16px 20px", fontSize: "13px", lineHeight: 1.75, color: T.text, whiteSpace: "pre-wrap" }}>
-                    {briefLoading && !brief ? (
-                      <span style={{ color: T.muted }}>▌</span>
-                    ) : brief}
+                    {briefLoading && !brief ? <span style={{ color: T.muted }}>▌</span> : brief}
                     {briefLoading && brief && <span style={{ color: T.muted }}>▌</span>}
                   </div>
                 </Card>
@@ -533,12 +522,12 @@ export default function DashboardClient() {
               {/* Session card */}
               <Card>
                 <CardHeader
-                  left="Næsta Æfing"
+                  left="Next Session"
                   right={
                     <div style={{ display: "flex", gap: "6px" }}>
                       {session?.metadata?.shoulder_risk && session.metadata.shoulder_risk !== "low" && (
                         <Badge color={session.metadata.shoulder_risk === "high" ? T.red : T.yellow}>
-                          {session.metadata.shoulder_risk === "high" ? "🔴 Öxl: Há" : "⚠️ Öxl: Mid"}
+                          {session.metadata.shoulder_risk === "high" ? "🔴 Shoulder: High" : "⚠️ Shoulder: Mid"}
                         </Badge>
                       )}
                       {session?.planned_date && <Badge color={T.muted}>{session.planned_date}</Badge>}
@@ -568,32 +557,32 @@ export default function DashboardClient() {
                         </div>
                       </div>
                       <div style={{ marginBottom: "0" }}>
-                        <Label>Æfingaplan</Label>
+                        <Label>Training Plan</Label>
                         <div style={{
                           background: T.bg, border: `1px solid ${T.border}`, borderRadius: "8px",
                           padding: "14px 16px", fontSize: "12px", lineHeight: 1.8, color: T.text,
                           whiteSpace: "pre-wrap", maxHeight: "260px", overflowY: "auto",
                           fontFamily: "ui-monospace, 'SF Mono', monospace",
                         }}>
-                          {session.content_md || "Engin áætlun — keyrðu sync script."}
+                          {session.content_md || "No plan — run sync script."}
                         </div>
                       </div>
                     </>
                   ) : (
-                    <p style={{ color: T.muted, padding: "12px 0" }}>Engin æfing skráð. Keyrðu sync script.</p>
+                    <p style={{ color: T.muted, padding: "12px 0" }}>No session scheduled. Run sync script.</p>
                   )}
                 </div>
 
                 {/* Log widget */}
                 <div style={{ padding: "16px 20px", borderTop: `1px solid ${T.border}`, marginTop: "16px" }}>
-                  <Label>Dagbók æfingar</Label>
+                  <Label>Session Log</Label>
                   <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
                     <input
                       ref={logInputRef}
                       value={logInput}
                       onChange={e => setLogInput(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && addLog()}
-                      placeholder="RDL 4×6 @ 85kg — líðan góð…"
+                      placeholder="RDL 4×6 @ 85kg — felt strong…"
                       style={{
                         flex: 1, background: T.surface2, border: `1px solid ${T.border}`,
                         borderRadius: "8px", color: T.text, fontSize: "13px",
@@ -604,7 +593,7 @@ export default function DashboardClient() {
                       background: T.accent, border: "none", borderRadius: "8px",
                       color: T.bg, cursor: "pointer", fontSize: "12px", fontWeight: 700,
                       padding: "8px 16px", fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.06em",
-                    }}>SKRÁ</button>
+                    }}>LOG</button>
                   </div>
                   {logEntries.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginBottom: "10px" }}>
@@ -622,7 +611,7 @@ export default function DashboardClient() {
                     fontSize: "11px", fontWeight: 700, padding: "7px 14px",
                     fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.08em",
                   }}>
-                    ✓ MERKJA ÆFINGU LOKIÐ
+                    ✓ MARK SESSION DONE
                   </button>
                 </div>
               </Card>
@@ -632,11 +621,11 @@ export default function DashboardClient() {
 
                 {/* Week strip */}
                 <Card>
-                  <CardHeader left="Þessi Vika" right={week?.kids_week ? <Badge color="#bc8cff">Barnsvika</Badge> : undefined} />
+                  <CardHeader left="This Week" right={week?.kids_week ? <Badge color="#bc8cff">Kids Week</Badge> : undefined} />
                   <div style={{ padding: "8px 16px 12px" }}>
                     {weekSessions.map((s: any) => {
-                      const isToday = s.scheduled_date === today;
-                      const isDone  = s.status === "completed";
+                      const isToday  = s.scheduled_date === today;
+                      const isDone   = s.status === "completed";
                       const isMissed = s.status === "missed";
                       return (
                         <div key={s.id} style={{
@@ -650,7 +639,7 @@ export default function DashboardClient() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: "9px", color: T.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                               {s.scheduled_date?.slice(5).replace("-", "/")}
-                              {isToday ? " · Í DAG" : ""}
+                              {isToday ? " · TODAY" : ""}
                             </div>
                             <div style={{
                               fontSize: "12px", color: isToday ? T.accent : T.text,
@@ -674,15 +663,15 @@ export default function DashboardClient() {
                       );
                     })}
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: T.muted, paddingTop: "8px" }}>
-                      <span>{week?.sessions_completed ?? 0} / {week?.sessions_planned ?? weekSessions.length} lokið</span>
-                      <span>{(week?.sessions_planned ?? weekSessions.length) - (week?.sessions_completed ?? 0)} eftir</span>
+                      <span>{week?.sessions_completed ?? 0} / {week?.sessions_planned ?? weekSessions.length} done</span>
+                      <span>{(week?.sessions_planned ?? weekSessions.length) - (week?.sessions_completed ?? 0)} remaining</span>
                     </div>
                   </div>
                 </Card>
 
                 {/* Block */}
                 <Card>
-                  <CardHeader left="Þjálfunarblokk" right={<Badge color={T.accent}>Virkt</Badge>} />
+                  <CardHeader left="Training Block" right={<Badge color={T.accent}>Active</Badge>} />
                   <div style={{ padding: "14px 16px" }}>
                     {block ? (
                       <>
@@ -690,14 +679,14 @@ export default function DashboardClient() {
                           {block.name}
                         </div>
                         <div style={{ fontSize: "11px", color: T.muted, display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                          <span>Vika {block.week} af {block.planned_weeks}</span>
+                          <span>Week {block.week} of {block.planned_weeks}</span>
                           <span style={{ color: T.accent }}>{blockWeekPct}%</span>
                         </div>
                         <div style={{ background: T.border, borderRadius: "999px", height: "3px", overflow: "hidden", marginBottom: "12px" }}>
                           <div style={{ height: "100%", background: T.accent, width: `${blockWeekPct}%`, borderRadius: "999px" }} />
                         </div>
                         {[
-                          ["Byrjaði", block.started_at],
+                          ["Started", block.started_at],
                           ["Deload", block.deload_due ? `${block.deload_due}${block.deloadDays != null ? ` (${block.deloadDays}d)` : ""}` : "—"],
                         ].map(([l, v]) => (
                           <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", padding: "4px 0", borderBottom: `1px solid ${T.border}` }}>
@@ -706,14 +695,14 @@ export default function DashboardClient() {
                           </div>
                         ))}
                       </>
-                    ) : <p style={{ color: T.muted, fontSize: "13px" }}>Engin virk blokk.</p>}
+                    ) : <p style={{ color: T.muted, fontSize: "13px" }}>No active block.</p>}
                   </div>
                 </Card>
 
                 {/* Shoulder */}
                 {shoulder && (
                   <Card>
-                    <CardHeader left="Öxl" right={
+                    <CardHeader left="Shoulder" right={
                       <Badge color={shoulder.status === "monitoring" ? T.yellow : shoulder.status === "resolved" ? T.green : T.muted}>
                         {shoulder.status}
                       </Badge>
@@ -744,14 +733,14 @@ export default function DashboardClient() {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
                         <div>
                           <div style={{ fontSize: "10px", color: isToday ? T.accent : T.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "4px" }}>
-                            {s.scheduled_date}{isToday ? " · Í DAG" : ""}
+                            {s.scheduled_date}{isToday ? " · TODAY" : ""}
                           </div>
                           <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.2rem", letterSpacing: "0.04em" }}>
                             {SESSION_ICONS[s.session_type]} {s.label}
                           </div>
                         </div>
                         <Badge color={isDone ? T.green : isToday ? T.accent : T.muted}>
-                          {isDone ? "Lokið" : isToday ? "Í dag" : "Áætlað"}
+                          {isDone ? "Done" : isToday ? "Today" : "Scheduled"}
                         </Badge>
                       </div>
                     </div>
@@ -764,7 +753,7 @@ export default function DashboardClient() {
           {/* HISTORY VIEW */}
           {nav === "history" && (
             <Card>
-              <CardHeader left="Nýlegar æfingar" />
+              <CardHeader left="Recent Sessions" />
               <div style={{ padding: "16px" }}>
                 {data.recentLogs?.length > 0 ? data.recentLogs.map((log: any) => (
                   <div key={log.id} style={{ padding: "12px 0", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -780,22 +769,20 @@ export default function DashboardClient() {
                     </div>
                   </div>
                 )) : (
-                  <p style={{ color: T.muted, fontSize: "13px", fontStyle: "italic" }}>Engar æfingar skráðar ennþá.</p>
+                  <p style={{ color: T.muted, fontSize: "13px", fontStyle: "italic" }}>No sessions logged yet.</p>
                 )}
               </div>
             </Card>
           )}
         </div>
 
-        {/* ── CHAT PANEL (desktop sidebar or mobile inline) ── */}
+        {/* ── CHAT PANEL (desktop sidebar) ── */}
         {chatOpen && !isMobile && ChatPanel}
       </div>
 
       {/* ── MOBILE CHAT (bottom panel) ── */}
       {chatOpen && isMobile && (
-        <div style={{ flexShrink: 0 }}>
-          {ChatPanel}
-        </div>
+        <div style={{ flexShrink: 0 }}>{ChatPanel}</div>
       )}
 
       {/* ── MANUAL READINESS MODAL ── */}
@@ -803,16 +790,15 @@ export default function DashboardClient() {
         <div onClick={e => e.target === e.currentTarget && setReadinessModal(false)}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: "14px", padding: "28px", width: "400px", maxWidth: "100%" }}>
-            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.6rem", letterSpacing: "0.04em", marginBottom: "4px" }}>LÍÐAN Í DAG</div>
-            <p style={{ fontSize: "13px", color: T.muted, marginBottom: "20px" }}>Skráðu morgunmælingar handvirkt</p>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.6rem", letterSpacing: "0.04em", marginBottom: "4px" }}>TODAY&apos;S READINESS</div>
+            <p style={{ fontSize: "13px", color: T.muted, marginBottom: "20px" }}>Log your morning check-in manually</p>
 
-            {/* Readiness call */}
             <div style={{ marginBottom: "14px" }}>
-              <Label>Líðan</Label>
+              <Label>Readiness</Label>
               <div style={{ display: "flex", gap: "8px" }}>
                 {(["green", "yellow", "red"] as const).map(r => {
                   const colors = { green: T.green, yellow: T.yellow, red: T.red };
-                  const labels = { green: "Grænt", yellow: "Gult", red: "Rautt" };
+                  const labels = { green: "Green", yellow: "Yellow", red: "Red" };
                   const active = manualForm.readiness_call === r;
                   return (
                     <button key={r} onClick={() => setManualForm(f => ({ ...f, readiness_call: r }))} style={{
@@ -827,11 +813,10 @@ export default function DashboardClient() {
               </div>
             </div>
 
-            {/* Metrics row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "14px" }}>
               {[
                 ["HRV (ms)", "hrv_sdnn", "45"],
-                ["Svefn (h)", "sleep_total_h", "7.5"],
+                ["Sleep (h)", "sleep_total_h", "7.5"],
                 ["RHR (bpm)", "resting_hr", "52"],
               ].map(([label, key, placeholder]) => (
                 <div key={key}>
@@ -852,13 +837,12 @@ export default function DashboardClient() {
               ))}
             </div>
 
-            {/* Notes */}
             <div style={{ marginBottom: "18px" }}>
-              <Label>Athugasemdir</Label>
+              <Label>Notes</Label>
               <input
                 value={manualForm.notes}
                 onChange={e => setManualForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="Svefn var truflað, öndunarstöðvun..."
+                placeholder="Disrupted sleep, feeling heavy, stress…"
                 style={{
                   width: "100%", background: T.surface2, border: `1px solid ${T.border}`,
                   borderRadius: "8px", color: T.text, fontSize: "13px",
@@ -872,13 +856,13 @@ export default function DashboardClient() {
               <button onClick={() => setReadinessModal(false)} style={{
                 background: "transparent", border: `1px solid ${T.border}`, borderRadius: "8px",
                 color: T.muted, cursor: "pointer", fontFamily: "inherit", fontSize: "13px", padding: "9px 16px",
-              }}>Hætta við</button>
+              }}>Cancel</button>
               <button onClick={saveManualReadiness} disabled={manualSaving} style={{
                 background: T.accent, border: "none", borderRadius: "8px",
                 color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
                 fontSize: "1rem", fontWeight: 700, padding: "9px 24px", letterSpacing: "0.06em",
                 opacity: manualSaving ? 0.6 : 1,
-              }}>VISTA</button>
+              }}>SAVE</button>
             </div>
           </div>
         </div>
@@ -886,26 +870,24 @@ export default function DashboardClient() {
 
       {/* ── MARK DONE MODAL ── */}
       {doneModal && (
-        <div
-          onClick={e => e.target === e.currentTarget && setDoneModal(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
-        >
+        <div onClick={e => e.target === e.currentTarget && setDoneModal(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: "14px", padding: "28px", width: "420px", maxWidth: "100%" }}>
-            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.6rem", letterSpacing: "0.04em", marginBottom: "6px" }}>MERKJA LOKIÐ</div>
-            <p style={{ fontSize: "13px", color: T.muted, marginBottom: "16px" }}>Stuttar athugasemdir? (valfrjálst)</p>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.6rem", letterSpacing: "0.04em", marginBottom: "6px" }}>MARK DONE</div>
+            <p style={{ fontSize: "13px", color: T.muted, marginBottom: "16px" }}>Any notes? (optional)</p>
             <textarea
               value={doneNotes}
               onChange={e => setDoneNotes(e.target.value)}
-              placeholder="Líðan, þungi, öxl, annað…"
+              placeholder="How it went, load, shoulder, anything…"
               rows={3}
               style={{ width: "100%", background: T.surface2, border: `1px solid ${T.border}`, borderRadius: "8px", color: T.text, fontFamily: "inherit", fontSize: "13px", padding: "10px 12px", resize: "vertical", outline: "none", boxSizing: "border-box" }}
             />
             <div style={{ display: "flex", gap: "8px", marginTop: "14px", justifyContent: "flex-end" }}>
               <button onClick={() => setDoneModal(false)} style={{ background: "transparent", border: `1px solid ${T.border}`, borderRadius: "8px", color: T.muted, cursor: "pointer", fontFamily: "inherit", fontSize: "13px", padding: "9px 16px" }}>
-                Hætta við
+                Cancel
               </button>
               <button onClick={markDone} style={{ background: T.accent, border: "none", borderRadius: "8px", color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", fontWeight: 700, padding: "9px 24px", letterSpacing: "0.06em" }}>
-                STAÐFESTA
+                CONFIRM
               </button>
             </div>
           </div>

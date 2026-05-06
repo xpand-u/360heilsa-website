@@ -101,7 +101,7 @@ export async function GET() {
   return NextResponse.json({
     today,
     healthDate,
-    todayStr: new Date().toLocaleDateString("is-IS", {
+    todayStr: new Date().toLocaleDateString("en-GB", {
       weekday: "long", month: "long", day: "numeric",
     }),
     session,

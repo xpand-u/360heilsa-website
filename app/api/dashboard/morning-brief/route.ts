@@ -110,7 +110,7 @@ Write a focused morning brief (4–6 bullet points). Include:
 4. Any flags: shoulder risk, deload proximity, sleep debt
 5. One sharp motivational line at the end
 
-No fluff. Direct. Use Icelandic for the readiness call label, English for everything else.`;
+No fluff. Direct. All in English.`;
 
   const stream = client.messages.stream({
     model: "claude-opus-4-6",
