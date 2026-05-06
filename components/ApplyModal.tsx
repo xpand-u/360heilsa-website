@@ -4,7 +4,7 @@ import { useState } from "react";
 const LEVELS = [
   "Byrjandi — lítil eða engin reynsla",
   "Nokkur reynsla — hef æft af og til",
-  "Þjálfaður — æfi reglulega",
+  "Lengra kominn — æfi reglulega",
 ];
 
 export default function ApplyModal({ onClose }: { onClose: () => void }) {
@@ -123,10 +123,10 @@ export default function ApplyModal({ onClose }: { onClose: () => void }) {
                 </p>
                 <div className="space-y-4">
                   <Textarea
-                    label="Markmið þín *"
+                    label="Hverjar eru þínar áherslur? *"
                     value={form.goals}
                     onChange={(v) => set("goals", v)}
-                    placeholder="Hvað viltu ná fram? Líkamsbygging, styrkur, líðan, heilsa..."
+                    placeholder="Uppbygging, styrkur, líðan, heilsa..."
                   />
                   <div>
                     <p className="text-xs mb-2" style={{ color: "var(--muted)", letterSpacing: "0.1em" }}>
@@ -182,13 +182,13 @@ export default function ApplyModal({ onClose }: { onClose: () => void }) {
                     label="Hvenær hentar þér að æfa? *"
                     value={form.schedule}
                     onChange={(v) => set("schedule", v)}
-                    placeholder="t.d. Mánudagar og miðvikudagar á morgnana, föstudagar síðdegis..."
+                    placeholder="t.d. Mánudagar og miðvikudagar á morgnana kl. 7-9, föstudagar síðdegis..."
                   />
                   <Field
-                    label="Hvernig fannst þér 360 Heilsa?"
+                    label="Hvar heyrðir þú af Rafni/360 Heilsu?"
                     value={form.referral}
                     onChange={(v) => set("referral", v)}
-                    placeholder="Vin, samfélagsmiðlar, leit..."
+                    placeholder="Vin, samfélagsmiðlum, leit..."
                   />
                 </div>
                 {error && (
