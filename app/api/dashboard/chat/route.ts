@@ -67,7 +67,7 @@ Your role:
 - Respond in Icelandic if the user writes in Icelandic, English if in English.`;
 
   const stream = await client.messages.stream({
-    model: "claude-sonnet-4-6",
+    model: "claude-opus-4-6",
     max_tokens: 1024,
     system: systemPrompt,
     messages: [{ role: "user", content: message }],
