@@ -391,6 +391,11 @@ export default function DashboardClient() {
           }}>
             {chatOpen ? (isMobile ? "×" : "CLOSE") : "COACH"}
           </button>
+          <a href="/dashboard/settings" style={{
+            fontSize: "11px", color: T.muted, textDecoration: "none",
+            fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.06em",
+            padding: "4px 10px", border: `1px solid ${T.border}`, borderRadius: "6px",
+          }}>⚙</a>
           {!isMobile && (
             <a href="/" style={{ fontSize: "11px", color: T.muted, textDecoration: "none" }}>← WEBSITE</a>
           )}

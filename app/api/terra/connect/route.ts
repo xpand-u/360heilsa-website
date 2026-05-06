@@ -26,7 +26,9 @@ const SUPPORTED_PROVIDERS = [
 ].join(",");
 
 export async function POST(req: NextRequest) {
-  const { athlete_id } = await req.json();
+  const body = await req.json();
+  // Use provided athlete_id or fall back to env var (single-user phase)
+  const athlete_id = body.athlete_id || process.env.RAFN_ATHLETE_ID;
 
   if (!athlete_id) {
     return NextResponse.json({ error: "athlete_id required" }, { status: 400 });
