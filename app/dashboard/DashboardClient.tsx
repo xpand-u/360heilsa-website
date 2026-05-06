@@ -124,6 +124,9 @@ export default function DashboardClient() {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [brief, setBrief]             = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
+  const [readinessModal, setReadinessModal] = useState(false);
+  const [manualForm, setManualForm]   = useState({ readiness_call: "green", hrv_sdnn: "", sleep_total_h: "", resting_hr: "", notes: "" });
+  const [manualSaving, setManualSaving] = useState(false);
   const chatEndRef  = useRef<HTMLDivElement>(null);
   const logInputRef = useRef<HTMLInputElement>(null);
 
@@ -189,6 +192,18 @@ export default function DashboardClient() {
     } finally {
       setBriefLoading(false);
     }
+  }
+
+  async function saveManualReadiness() {
+    setManualSaving(true);
+    await fetch("/api/health/manual", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(manualForm),
+    });
+    setManualSaving(false);
+    setReadinessModal(false);
+    setManualForm({ readiness_call: "green", hrv_sdnn: "", sleep_total_h: "", resting_hr: "", notes: "" });
+    fetchData();
   }
 
   async function sendChat(overrideMsg?: string) {
@@ -408,6 +423,11 @@ export default function DashboardClient() {
                       {healthDate}
                     </span>
                   )}
+                  <button onClick={() => setReadinessModal(true)} style={{
+                    background: "none", border: `1px solid ${T.border}`, borderRadius: "4px",
+                    color: T.muted, cursor: "pointer", fontSize: "9px", padding: "1px 7px",
+                    fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.08em", marginBottom: "6px",
+                  }}>+ SKRÁ</button>
                 </div>
                 <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: isMobile ? "2.4rem" : "3rem", letterSpacing: "0.06em", color: rc.color, lineHeight: 1 }}>
                   {rc.labelIs.toUpperCase()}
@@ -775,6 +795,92 @@ export default function DashboardClient() {
       {chatOpen && isMobile && (
         <div style={{ flexShrink: 0 }}>
           {ChatPanel}
+        </div>
+      )}
+
+      {/* ── MANUAL READINESS MODAL ── */}
+      {readinessModal && (
+        <div onClick={e => e.target === e.currentTarget && setReadinessModal(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: "14px", padding: "28px", width: "400px", maxWidth: "100%" }}>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.6rem", letterSpacing: "0.04em", marginBottom: "4px" }}>LÍÐAN Í DAG</div>
+            <p style={{ fontSize: "13px", color: T.muted, marginBottom: "20px" }}>Skráðu morgunmælingar handvirkt</p>
+
+            {/* Readiness call */}
+            <div style={{ marginBottom: "14px" }}>
+              <Label>Líðan</Label>
+              <div style={{ display: "flex", gap: "8px" }}>
+                {(["green", "yellow", "red"] as const).map(r => {
+                  const colors = { green: T.green, yellow: T.yellow, red: T.red };
+                  const labels = { green: "Grænt", yellow: "Gult", red: "Rautt" };
+                  const active = manualForm.readiness_call === r;
+                  return (
+                    <button key={r} onClick={() => setManualForm(f => ({ ...f, readiness_call: r }))} style={{
+                      flex: 1, padding: "8px", borderRadius: "8px", cursor: "pointer",
+                      fontFamily: "'BebasNeue', sans-serif", fontSize: "0.95rem", letterSpacing: "0.06em",
+                      background: active ? colors[r] + "22" : T.surface2,
+                      border: `1px solid ${active ? colors[r] : T.border}`,
+                      color: active ? colors[r] : T.muted,
+                    }}>{labels[r]}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Metrics row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "14px" }}>
+              {[
+                ["HRV (ms)", "hrv_sdnn", "45"],
+                ["Svefn (h)", "sleep_total_h", "7.5"],
+                ["RHR (bpm)", "resting_hr", "52"],
+              ].map(([label, key, placeholder]) => (
+                <div key={key}>
+                  <Label>{label}</Label>
+                  <input
+                    type="number"
+                    value={(manualForm as any)[key]}
+                    onChange={e => setManualForm(f => ({ ...f, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    style={{
+                      width: "100%", background: T.surface2, border: `1px solid ${T.border}`,
+                      borderRadius: "8px", color: T.text, fontSize: "14px",
+                      padding: "8px 10px", outline: "none", fontFamily: "inherit",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Notes */}
+            <div style={{ marginBottom: "18px" }}>
+              <Label>Athugasemdir</Label>
+              <input
+                value={manualForm.notes}
+                onChange={e => setManualForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="Svefn var truflað, öndunarstöðvun..."
+                style={{
+                  width: "100%", background: T.surface2, border: `1px solid ${T.border}`,
+                  borderRadius: "8px", color: T.text, fontSize: "13px",
+                  padding: "8px 12px", outline: "none", fontFamily: "inherit",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              <button onClick={() => setReadinessModal(false)} style={{
+                background: "transparent", border: `1px solid ${T.border}`, borderRadius: "8px",
+                color: T.muted, cursor: "pointer", fontFamily: "inherit", fontSize: "13px", padding: "9px 16px",
+              }}>Hætta við</button>
+              <button onClick={saveManualReadiness} disabled={manualSaving} style={{
+                background: T.accent, border: "none", borderRadius: "8px",
+                color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
+                fontSize: "1rem", fontWeight: 700, padding: "9px 24px", letterSpacing: "0.06em",
+                opacity: manualSaving ? 0.6 : 1,
+              }}>VISTA</button>
+            </div>
+          </div>
         </div>
       )}
 
