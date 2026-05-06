@@ -177,7 +177,7 @@ export default function DashboardClient() {
           <div style={{ display: "flex", gap: "4px" }}>
             {([["today", "Í DAG"], ["week", "VIKAN"], ["history", "SAGA"]] as [NavItem, string][]).map(([id, label]) => (
               <button key={id} onClick={() => setNav(id)} style={{
-                background: "none", border: "none", cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
+                border: "none", cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
                 fontSize: "0.9rem", letterSpacing: "0.08em", padding: "4px 14px", borderRadius: "6px",
                 color: nav === id ? T.accent : T.muted,
                 background: nav === id ? T.accentDim : "transparent",
