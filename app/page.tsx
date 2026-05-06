@@ -4,6 +4,7 @@ import About from "@/components/About";
 import Einkapjalfun from "@/components/Einkapjalfun";
 import Coach360 from "@/components/Coach360";
 import Podcast from "@/components/Podcast";
+import WayOfLife from "@/components/WayOfLife";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -15,6 +16,7 @@ export default function Home() {
       <Einkapjalfun />
       <Coach360 />
       <Podcast />
+      <WayOfLife />
       <Footer />
     </main>
   );
