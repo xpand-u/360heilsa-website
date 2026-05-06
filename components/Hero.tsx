@@ -63,7 +63,7 @@ export default function Hero() {
           <button onClick={() => setOpen(true)} className="btn-primary text-center">
             SÆKJA UM EINKAÞJÁLFUN
           </button>
-          <a href="#coach" className="btn-outline text-center">
+          <a href="/dashboard/login" className="btn-outline text-center">
             360 HEILSA ONLINE COACH →
           </a>
         </div>
