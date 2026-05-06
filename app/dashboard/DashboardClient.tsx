@@ -144,7 +144,12 @@ export default function DashboardClient() {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
     window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    // Auto-refresh every 60 seconds
+    const poll = setInterval(fetchData, 60_000);
+    return () => {
+      window.removeEventListener("resize", check);
+      clearInterval(poll);
+    };
   }, [fetchData]);
 
   useEffect(() => {
