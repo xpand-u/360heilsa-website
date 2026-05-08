@@ -5,8 +5,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export function computeCyclePhase(
   lastPeriodStart: string,
@@ -56,17 +56,20 @@ export function computeCyclePhase(
 }
 
 export async function GET() {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sb = createServerClient();
 
   const [logsRes, athleteRes] = await Promise.all([
     sb.from("cycle_logs")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("period_start_date", { ascending: false })
       .limit(4),
     sb.from("athletes")
       .select("tracks_cycle, avg_cycle_length, contraceptive_method")
-      .eq("id", ATHLETE_ID)
+      .eq("id", athleteId)
       .single(),
   ]);
 
@@ -82,6 +85,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { period_start_date, notes } = await req.json();
 
   if (!period_start_date) {
@@ -93,18 +99,18 @@ export async function POST(req: NextRequest) {
   const { data: athlete } = await sb
     .from("athletes")
     .select("avg_cycle_length, tracks_cycle")
-    .eq("id", ATHLETE_ID)
+    .eq("id", athleteId)
     .single();
 
   // Enable tracking if not already on
   if (!athlete?.tracks_cycle) {
-    await sb.from("athletes").update({ tracks_cycle: true }).eq("id", ATHLETE_ID);
+    await sb.from("athletes").update({ tracks_cycle: true }).eq("id", athleteId);
   }
 
   const { data, error } = await sb
     .from("cycle_logs")
     .insert({
-      athlete_id:        ATHLETE_ID,
+      athlete_id:        athleteId,
       period_start_date,
       cycle_length_est:  athlete?.avg_cycle_length || 28,
       notes:             notes?.trim() || null,
@@ -118,7 +124,7 @@ export async function POST(req: NextRequest) {
   const { data: priorLogs } = await sb
     .from("cycle_logs")
     .select("period_start_date")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .neq("period_start_date", period_start_date)
     .order("period_start_date", { ascending: false })
     .limit(4);
@@ -142,7 +148,7 @@ export async function POST(req: NextRequest) {
       const newAvg = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
       await sb.from("athletes")
         .update({ avg_cycle_length: newAvg })
-        .eq("id", ATHLETE_ID);
+        .eq("id", athleteId);
     }
   }
 

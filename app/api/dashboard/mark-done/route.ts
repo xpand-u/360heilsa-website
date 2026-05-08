@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { notes, sessionDate } = await req.json();
   const sb = createServerClient();
   const today = new Date().toISOString().split("T")[0];
@@ -12,12 +15,12 @@ export async function POST(req: NextRequest) {
   const dateToMark = sessionDate || today;
   await sb.from("sessions")
     .update({ status: "completed" })
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("scheduled_date", dateToMark);
 
   // Update sessions_completed count in weekly_state
   const weekRes = await sb.from("weekly_state").select("*")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .order("week_start_date", { ascending: false })
     .limit(1).maybeSingle();
 
@@ -31,7 +34,7 @@ export async function POST(req: NextRequest) {
   if (notes?.trim()) {
     const time = new Date().toLocaleTimeString("is-IS", { hour: "2-digit", minute: "2-digit" });
     const scratchRes = await sb.from("session_scratch").select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .eq("scratch_date", today)
       .eq("scratch_status", "active")
       .maybeSingle();

@@ -524,60 +524,197 @@ export default function OnboardingClient() {
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
-  const containerStyle: React.CSSProperties = {
-    minHeight: "100vh",
+  // Shared layout helpers
+  const baseScreen: React.CSSProperties = {
     background: T.bg,
     color: T.text,
     fontFamily: "'Inter', -apple-system, sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    padding: isMobile ? "0" : "40px 20px",
   };
 
-  const cardStyle: React.CSSProperties = {
+  // Desktop card wrapper (not used on mobile — each step goes full-bleed)
+  const desktopCard: React.CSSProperties = {
     width: "100%",
     maxWidth: "600px",
     background: T.surface,
-    border: isMobile ? "none" : `1px solid ${T.border}`,
-    borderRadius: isMobile ? "0" : "16px",
-    minHeight: isMobile ? "100vh" : "auto",
+    border: `1px solid ${T.border}`,
+    borderRadius: "16px",
     overflow: "hidden",
   };
 
-  // ── Progress indicator ───────────────────────────────────────────────────────
-  const STEPS: Step[] = ["intro", "intake", "schedule", "movement", "foundation"];
-  const stepIdx = STEPS.indexOf(step);
+  // Step labels for progress indicator
+  const STEP_META = [
+    { key: "intake",     label: "Intake" },
+    { key: "schedule",   label: "Schedule" },
+    { key: "movement",   label: "Movement" },
+    { key: "foundation", label: "Foundation" },
+  ];
+  const activeStepIdx = STEP_META.findIndex(s => s.key === step);
 
-  function ProgressBar() {
+  function StepProgress() {
     if (step === "intro" || step === "done") return null;
     return (
-      <div style={{ padding: "16px 24px 0", display: "flex", gap: "6px" }}>
-        {STEPS.slice(1).map((s, i) => (
-          <div key={s} style={{
-            flex: 1, height: "3px", borderRadius: "99px",
-            background: i < stepIdx ? T.accent : i === stepIdx - 1 ? T.accent : T.border,
-            opacity: i < stepIdx ? 1 : i === stepIdx - 1 ? 1 : 0.3,
-            transition: "all 0.3s",
-          }} />
-        ))}
+      <div style={{
+        display: "flex", alignItems: "center", gap: isMobile ? "0" : "4px",
+        padding: isMobile ? "14px 20px" : "16px 24px",
+        borderBottom: `1px solid ${T.border}`,
+        background: T.surface,
+      }}>
+        {STEP_META.map((s, i) => {
+          const done = i < activeStepIdx;
+          const active = i === activeStepIdx;
+          return (
+            <div key={s.key} style={{ display: "flex", alignItems: "center", flex: 1 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                <div style={{
+                  width: "28px", height: "28px", borderRadius: "50%",
+                  background: done ? T.accent : active ? T.bg : T.surface2,
+                  border: `2px solid ${done ? T.accent : active ? T.accent : T.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "11px", fontWeight: 700,
+                  color: done ? T.bg : active ? T.accent : T.muted,
+                  transition: "all 0.3s", flexShrink: 0,
+                }}>
+                  {done ? "✓" : i + 1}
+                </div>
+                {!isMobile && (
+                  <div style={{
+                    fontSize: "9px", fontWeight: 600, letterSpacing: "0.08em",
+                    color: active ? T.accent : done ? T.text : T.muted,
+                    textTransform: "uppercase", whiteSpace: "nowrap",
+                  }}>{s.label}</div>
+                )}
+              </div>
+              {i < STEP_META.length - 1 && (
+                <div style={{
+                  flex: 1, height: "2px", margin: "0 4px",
+                  background: done ? T.accent : T.border,
+                  transition: "background 0.3s",
+                  marginBottom: isMobile ? 0 : "18px",
+                }} />
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   }
 
   // ── STEP: INTRO ──────────────────────────────────────────────────────────────
   if (step === "intro") {
+    if (isMobile) {
+      return (
+        <div style={{
+          ...baseScreen,
+          minHeight: "100dvh",
+          display: "flex", flexDirection: "column",
+          paddingTop: "env(safe-area-inset-top)",
+        }}>
+          {/* Top brand bar */}
+          <div style={{ padding: "24px 24px 0" }}>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "13px", letterSpacing: "0.2em", color: T.muted }}>
+              360 HEILSA
+            </div>
+          </div>
+
+          {/* Hero */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 24px 24px" }}>
+            {/* CF monogram */}
+            <div style={{
+              width: "72px", height: "72px", borderRadius: "50%",
+              background: T.accent, display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: "22px", color: T.bg,
+              fontWeight: 700, fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.04em",
+              marginBottom: "24px",
+            }}>CF</div>
+
+            <h1 style={{
+              fontFamily: "'BebasNeue', sans-serif", fontSize: "clamp(36px, 9vw, 52px)",
+              letterSpacing: "0.06em", color: T.text, margin: "0 0 8px",
+              lineHeight: 1,
+            }}>
+              COACH FRANKLIN
+            </h1>
+            <p style={{ fontSize: "14px", color: T.muted, margin: "0 0 28px", lineHeight: 1.5 }}>
+              Elite Performance System
+            </p>
+
+            <p style={{ fontSize: "18px", lineHeight: 1.55, fontWeight: 300, margin: "0 0 16px", color: T.text }}>
+              I&apos;m not a generic fitness app.
+            </p>
+            <p style={{ fontSize: "14px", lineHeight: 1.8, color: T.muted, margin: 0 }}>
+              I build a system around how{" "}
+              <span style={{ color: T.text }}>you specifically</span>{" "}
+              move, recover, and compete — and I adjust it as you change.
+            </p>
+          </div>
+
+          {/* What's next — numbered list */}
+          <div style={{ padding: "0 24px 20px" }}>
+            <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", color: T.muted, marginBottom: "14px" }}>
+              WHAT HAPPENS NEXT
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+              {[
+                ["Intake conversation", "Tell me about your training"],
+                ["Lock in your schedule", "Days, times, into your calendar"],
+                ["Movement screen", "5 self-tests, ~10 minutes"],
+                ["Foundation Week begins", "Your first real week in the system"],
+              ].map(([title, desc], i) => (
+                <div key={title} style={{
+                  display: "flex", gap: "14px", alignItems: "flex-start",
+                  padding: "12px 0",
+                  borderBottom: i < 3 ? `1px solid ${T.border}` : "none",
+                }}>
+                  <div style={{
+                    width: "24px", height: "24px", borderRadius: "50%",
+                    border: `1.5px solid ${T.accent}`, flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "11px", fontWeight: 700, color: T.accent, marginTop: "1px",
+                  }}>{i + 1}</div>
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: 600, color: T.text, marginBottom: "1px" }}>{title}</div>
+                    <div style={{ fontSize: "12px", color: T.muted }}>{desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div style={{
+            padding: "16px 24px",
+            paddingBottom: "max(24px, env(safe-area-inset-bottom))",
+            borderTop: `1px solid ${T.border}`,
+          }}>
+            <button
+              onClick={() => setStep("intake")}
+              style={{
+                background: T.accent, border: "none", borderRadius: "12px",
+                color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
+                fontSize: "1.3rem", letterSpacing: "0.1em", padding: "18px",
+                width: "100%", transition: "opacity 0.15s",
+              }}
+            >
+              LET&apos;S START
+            </button>
+            <p style={{ fontSize: "11px", color: T.muted, textAlign: "center", margin: "10px 0 0" }}>
+              ~15 minutes · You&apos;ll need a wall and a bed or couch
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Desktop intro
     return (
-      <div style={containerStyle}>
-        <div style={{ ...cardStyle, display: "flex", flexDirection: "column", justifyContent: "center", padding: "48px 32px", gap: "32px" }}>
-          {/* CF Badge */}
+      <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+        <div style={{ ...desktopCard, display: "flex", flexDirection: "column", padding: "48px 40px", gap: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <div style={{
               width: "56px", height: "56px", borderRadius: "50%",
               background: T.accent, display: "flex", alignItems: "center",
               justifyContent: "center", fontSize: "18px", color: T.bg,
-              fontWeight: 700, fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.04em",
-              flexShrink: 0,
+              fontWeight: 700, fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.04em", flexShrink: 0,
             }}>CF</div>
             <div>
               <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.4rem", letterSpacing: "0.08em", color: T.accent }}>
@@ -586,8 +723,6 @@ export default function OnboardingClient() {
               <div style={{ fontSize: "12px", color: T.muted }}>Elite Performance System</div>
             </div>
           </div>
-
-          {/* Franklin speaks */}
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <p style={{ fontSize: "20px", lineHeight: 1.5, fontWeight: 300, margin: 0, color: T.text }}>
               I&apos;m not a generic fitness app.
@@ -600,16 +735,9 @@ export default function OnboardingClient() {
             <p style={{ fontSize: "15px", lineHeight: 1.8, color: T.muted, margin: 0 }}>
               To do that, I need to know you. We&apos;ll spend about 15 minutes doing that
               right now — a conversation, a quick movement screen, and locking in your schedule.
-              After that, you&apos;re in the system.
             </p>
           </div>
-
-          {/* What's coming */}
-          <div style={{
-            background: T.surface2, border: `1px solid ${T.border}`,
-            borderRadius: "12px", padding: "20px",
-            display: "flex", flexDirection: "column", gap: "12px",
-          }}>
+          <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
             {[
               ["💬", "Intake conversation", "Tell me about your training. I'll ask the right questions."],
               ["📅", "Set your schedule", "Lock in specific days and times. I'll put them in your calendar."],
@@ -625,7 +753,6 @@ export default function OnboardingClient() {
               </div>
             ))}
           </div>
-
           <button
             onClick={() => setStep("intake")}
             style={{
@@ -637,7 +764,6 @@ export default function OnboardingClient() {
           >
             LET&apos;S START
           </button>
-
           <p style={{ fontSize: "11px", color: T.muted, textAlign: "center", margin: 0 }}>
             Takes about 15 minutes · You&apos;ll need a wall and a bed or couch for the movement screen
           </p>
@@ -648,10 +774,124 @@ export default function OnboardingClient() {
 
   // ── STEP: INTAKE ─────────────────────────────────────────────────────────────
   if (step === "intake") {
+    if (isMobile) {
+      return (
+        <div style={{
+          ...baseScreen,
+          height: "100dvh",
+          display: "flex", flexDirection: "column",
+          paddingTop: "env(safe-area-inset-top)",
+        }}>
+          <StepProgress />
+
+          {/* Header */}
+          <div style={{ padding: "14px 20px 12px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "0.95rem", letterSpacing: "0.08em", color: T.accent }}>
+              INTAKE CONVERSATION
+            </div>
+            <div style={{ fontSize: "11px", color: T.muted, marginTop: "2px" }}>
+              Answer naturally — Franklin will ask follow-ups for anything missing.
+            </div>
+          </div>
+
+          {/* Chat messages — fills remaining space, scrollable */}
+          <div style={{
+            flex: 1, overflowY: "auto", padding: "16px 16px",
+            display: "flex", flexDirection: "column", gap: "12px",
+            WebkitOverflowScrolling: "touch",
+          }}>
+            {intakeMsgs.map((m, i) => (
+              <div key={i} style={{
+                display: "flex", gap: "8px",
+                flexDirection: m.role === "user" ? "row-reverse" : "row",
+                alignItems: "flex-end",
+              }}>
+                {m.role === "assistant" && (
+                  <div style={{
+                    width: "26px", height: "26px", borderRadius: "50%",
+                    background: T.accent, display: "flex", alignItems: "center",
+                    justifyContent: "center", fontSize: "9px", color: T.bg,
+                    fontWeight: 700, flexShrink: 0,
+                  }}>CF</div>
+                )}
+                <div style={{
+                  background: m.role === "user" ? T.accent : T.surface2,
+                  borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                  padding: "10px 14px",
+                  fontSize: "14px", lineHeight: 1.6, color: m.role === "user" ? T.bg : T.text,
+                  maxWidth: "82%", whiteSpace: "pre-wrap",
+                }}>
+                  {m.content || <span style={{ opacity: 0.5 }}>▌</span>}
+                </div>
+              </div>
+            ))}
+            <div ref={intakeEndRef} />
+          </div>
+
+          {/* Input bar — pinned to bottom, clears home indicator */}
+          <div style={{
+            flexShrink: 0, padding: "10px 16px",
+            paddingBottom: "max(10px, env(safe-area-inset-bottom))",
+            borderTop: `1px solid ${T.border}`,
+            background: T.surface,
+          }}>
+            {intakeComplete ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ fontSize: "13px", color: T.green, fontWeight: 600, textAlign: "center" }}>
+                  ✓ Franklin has everything he needs.
+                </div>
+                <button
+                  onClick={() => setStep("schedule")}
+                  style={{
+                    background: T.accent, border: "none", borderRadius: "10px",
+                    color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
+                    fontSize: "1rem", letterSpacing: "0.08em", padding: "15px",
+                    width: "100%",
+                  }}
+                >
+                  NEXT — SET YOUR SCHEDULE →
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input
+                  value={intakeInput}
+                  onChange={e => setIntakeInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendIntake()}
+                  placeholder={intakeStreaming ? "Franklin is typing…" : "Your answer…"}
+                  disabled={intakeStreaming}
+                  style={{
+                    flex: 1, background: T.bg, border: `1px solid ${T.border}`,
+                    borderRadius: "22px", color: T.text, fontSize: "16px",
+                    padding: "11px 16px", outline: "none",
+                    opacity: intakeStreaming ? 0.5 : 1,
+                  }}
+                />
+                <button
+                  onClick={sendIntake}
+                  disabled={!intakeInput.trim() || intakeStreaming}
+                  style={{
+                    width: "44px", height: "44px", borderRadius: "50%", flexShrink: 0,
+                    background: !intakeInput.trim() || intakeStreaming ? T.surface2 : T.accent,
+                    border: "none", cursor: !intakeInput.trim() || intakeStreaming ? "default" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "18px", transition: "background 0.15s",
+                  }}
+                >
+                  ↑
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Desktop intake
     return (
-      <div style={containerStyle}>
-        <div style={cardStyle}>
-          <ProgressBar />
+      <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+        <div style={desktopCard}>
+          <StepProgress />
           <div style={{ padding: "20px 24px 12px", borderBottom: `1px solid ${T.border}` }}>
             <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em", color: T.accent }}>
               INTAKE CONVERSATION
@@ -660,19 +900,14 @@ export default function OnboardingClient() {
               Franklin is building your profile. Answer naturally — he&apos;ll ask follow-ups for anything missing.
             </div>
           </div>
-
-          {/* Chat area */}
           <div style={{
-            padding: "20px 24px",
-            minHeight: "340px", maxHeight: isMobile ? "calc(100vh - 260px)" : "440px",
-            overflowY: "auto",
-            display: "flex", flexDirection: "column", gap: "14px",
+            padding: "20px 24px", minHeight: "340px", maxHeight: "440px",
+            overflowY: "auto", display: "flex", flexDirection: "column", gap: "14px",
           }}>
             {intakeMsgs.map((m, i) => (
               <div key={i} style={{
                 display: "flex", gap: "10px",
-                flexDirection: m.role === "user" ? "row-reverse" : "row",
-                alignItems: "flex-start",
+                flexDirection: m.role === "user" ? "row-reverse" : "row", alignItems: "flex-start",
               }}>
                 {m.role === "assistant" && (
                   <div style={{
@@ -695,25 +930,18 @@ export default function OnboardingClient() {
             ))}
             <div ref={intakeEndRef} />
           </div>
-
-          {/* Input or completion */}
           <div style={{ padding: "16px 24px", borderTop: `1px solid ${T.border}` }}>
             {intakeComplete ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div style={{ fontSize: "13px", color: T.green, fontWeight: 600 }}>
-                  ✓ Franklin has everything he needs.
-                </div>
+                <div style={{ fontSize: "13px", color: T.green, fontWeight: 600 }}>✓ Franklin has everything he needs.</div>
                 <button
                   onClick={() => setStep("schedule")}
                   style={{
                     background: T.accent, border: "none", borderRadius: "8px",
                     color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
-                    fontSize: "1rem", letterSpacing: "0.08em", padding: "13px",
-                    width: "100%",
+                    fontSize: "1rem", letterSpacing: "0.08em", padding: "13px", width: "100%",
                   }}
-                >
-                  NEXT — SET YOUR SCHEDULE →
-                </button>
+                >NEXT — SET YOUR SCHEDULE →</button>
               </div>
             ) : (
               <div style={{ display: "flex", gap: "8px" }}>
@@ -737,12 +965,9 @@ export default function OnboardingClient() {
                     background: T.accent, border: "none", borderRadius: "8px",
                     color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
                     fontSize: "0.9rem", letterSpacing: "0.06em", padding: "12px 18px",
-                    opacity: !intakeInput.trim() || intakeStreaming ? 0.4 : 1,
-                    transition: "opacity 0.15s",
+                    opacity: !intakeInput.trim() || intakeStreaming ? 0.4 : 1, transition: "opacity 0.15s",
                   }}
-                >
-                  SEND
-                </button>
+                >SEND</button>
               </div>
             )}
           </div>
@@ -753,140 +978,185 @@ export default function OnboardingClient() {
 
   // ── STEP: SCHEDULE ───────────────────────────────────────────────────────────
   if (step === "schedule") {
+    const scheduleContent = (
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: isMobile ? "20px 20px" : "20px 24px" }}>
+        {/* Day selector */}
+        <div>
+          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, marginBottom: "10px" }}>
+            Which days will you train?
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "6px" }}>
+            {DAYS.map(day => {
+              const selected = scheduleDays.find(d => d.day === day);
+              return (
+                <button
+                  key={day}
+                  onClick={() => toggleDay(day)}
+                  style={{
+                    minHeight: "44px", borderRadius: "8px", cursor: "pointer",
+                    fontSize: "12px", fontWeight: 700, transition: "all 0.15s",
+                    background: selected ? T.accent : T.surface2,
+                    border: `1px solid ${selected ? T.accent : T.border}`,
+                    color: selected ? T.bg : T.muted,
+                    padding: "0",
+                  }}
+                >
+                  {DAY_LABELS[day]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Per-day settings */}
+        {scheduleDays.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, margin: 0 }}>
+              Configure each day
+            </p>
+            {scheduleDays
+              .sort((a, b) => DAYS.indexOf(a.day as typeof DAYS[number]) - DAYS.indexOf(b.day as typeof DAYS[number]))
+              .map(slot => (
+              <div key={slot.day} style={{
+                background: T.surface2, border: `1px solid ${T.border}`,
+                borderRadius: "10px", padding: "14px 16px",
+                display: "flex", flexDirection: "column", gap: "10px",
+              }}>
+                <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.04em", color: T.accent }}>
+                  {DAY_LABELS[slot.day]}
+                </div>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {SESSION_TYPES.map(type => (
+                    <button
+                      key={type}
+                      onClick={() => updateDayField(slot.day, "type", type)}
+                      style={{
+                        minHeight: "36px", padding: "5px 14px", borderRadius: "6px", cursor: "pointer",
+                        fontSize: "12px", fontWeight: 600, transition: "all 0.15s",
+                        background: slot.type === type ? T.accentDim : "transparent",
+                        border: `1px solid ${slot.type === type ? T.accent : T.border}`,
+                        color: slot.type === type ? T.accent : T.muted,
+                      }}
+                    >
+                      {SESSION_TYPE_LABELS[type]}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {TIME_OPTIONS.map(time => (
+                    <button
+                      key={time}
+                      onClick={() => updateDayField(slot.day, "time", time)}
+                      style={{
+                        minHeight: "36px", padding: "5px 14px", borderRadius: "6px", cursor: "pointer",
+                        fontSize: "12px", transition: "all 0.15s",
+                        background: slot.time === time ? T.surface : "transparent",
+                        border: `1px solid ${slot.time === time ? T.accent : T.border}`,
+                        color: slot.time === time ? T.text : T.muted,
+                        flex: 1,
+                      }}
+                    >
+                      {TIME_LABELS[time]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Calendar sync */}
+        {scheduleDays.length > 0 && (
+          <div style={{
+            background: `linear-gradient(135deg, ${T.surface2} 0%, rgba(200,169,110,0.05) 100%)`,
+            border: `1px solid ${T.border}`, borderRadius: "12px", padding: "16px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
+              <span style={{ fontSize: "20px" }}>📅</span>
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: 600, color: T.text }}>Sync to your calendar</div>
+                <div style={{ fontSize: "11px", color: T.muted }}>One tap — sessions appear automatically and stay updated.</div>
+              </div>
+            </div>
+            <button
+              onClick={openCalendar}
+              style={{
+                width: "100%", minHeight: "44px", borderRadius: "8px", cursor: "pointer",
+                background: calendarLinked ? T.green + "18" : T.accentDim,
+                border: `1px solid ${calendarLinked ? T.green : T.accent}`,
+                color: calendarLinked ? T.green : T.accent,
+                fontSize: "12px", fontWeight: 700, letterSpacing: "0.08em",
+                fontFamily: "'BebasNeue', sans-serif",
+              }}
+            >
+              {calendarLinked ? "✓ CALENDAR LINKED" : "ADD TO CALENDAR (OPTIONAL)"}
+            </button>
+            <p style={{ fontSize: "10px", color: T.muted, margin: "8px 0 0", textAlign: "center" }}>
+              Works with Apple Calendar, Google Calendar, and Outlook
+            </p>
+          </div>
+        )}
+      </div>
+    );
+
+    if (isMobile) {
+      return (
+        <div style={{
+          ...baseScreen, height: "100dvh",
+          display: "flex", flexDirection: "column",
+          paddingTop: "env(safe-area-inset-top)",
+        }}>
+          <StepProgress />
+          <div style={{ padding: "14px 20px 12px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "0.95rem", letterSpacing: "0.08em", color: T.accent }}>
+              YOUR TRAINING SCHEDULE
+            </div>
+            <div style={{ fontSize: "11px", color: T.muted, marginTop: "2px" }}>
+              Lock in specific days and times — I&apos;ll add them to your calendar automatically.
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}>
+            {scheduleContent}
+          </div>
+          <div style={{
+            flexShrink: 0, padding: "12px 20px",
+            paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+            borderTop: `1px solid ${T.border}`, background: T.surface,
+          }}>
+            <button
+              onClick={() => setStep("movement")}
+              disabled={scheduleDays.length === 0}
+              style={{
+                background: scheduleDays.length > 0 ? T.accent : T.surface2,
+                border: `1px solid ${scheduleDays.length > 0 ? T.accent : T.border}`,
+                borderRadius: "10px", color: scheduleDays.length > 0 ? T.bg : T.muted,
+                cursor: scheduleDays.length > 0 ? "pointer" : "default",
+                fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem",
+                letterSpacing: "0.08em", padding: "15px",
+                width: "100%", transition: "all 0.15s",
+              }}
+            >
+              NEXT — MOVEMENT SCREEN →
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div style={containerStyle}>
-        <div style={cardStyle}>
-          <ProgressBar />
+      <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+        <div style={desktopCard}>
+          <StepProgress />
           <div style={{ padding: "20px 24px 12px", borderBottom: `1px solid ${T.border}` }}>
             <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em", color: T.accent }}>
               YOUR TRAINING SCHEDULE
             </div>
             <div style={{ fontSize: "12px", color: T.muted, marginTop: "2px" }}>
               Scheduling specific times is the difference between athletes who show up and athletes who don&apos;t.
-              Lock in your days — I&apos;ll put them in your calendar automatically.
             </div>
           </div>
-
-          <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "20px" }}>
-
-            {/* Day selector */}
-            <div>
-              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, marginBottom: "10px" }}>
-                Which days will you train?
-              </p>
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                {DAYS.map(day => {
-                  const selected = scheduleDays.find(d => d.day === day);
-                  return (
-                    <button
-                      key={day}
-                      onClick={() => toggleDay(day)}
-                      style={{
-                        padding: "8px 14px", borderRadius: "8px", cursor: "pointer",
-                        fontSize: "13px", fontWeight: 600, transition: "all 0.15s",
-                        background: selected ? T.accent : T.surface2,
-                        border: `1px solid ${selected ? T.accent : T.border}`,
-                        color: selected ? T.bg : T.muted,
-                      }}
-                    >
-                      {DAY_LABELS[day]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Per-day settings */}
-            {scheduleDays.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, margin: 0 }}>
-                  Configure each day
-                </p>
-                {scheduleDays
-                  .sort((a, b) => DAYS.indexOf(a.day as typeof DAYS[number]) - DAYS.indexOf(b.day as typeof DAYS[number]))
-                  .map(slot => (
-                  <div key={slot.day} style={{
-                    background: T.surface2, border: `1px solid ${T.border}`,
-                    borderRadius: "10px", padding: "14px 16px",
-                    display: "flex", flexDirection: "column", gap: "10px",
-                  }}>
-                    <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.04em", color: T.accent }}>
-                      {DAY_LABELS[slot.day]}
-                    </div>
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {SESSION_TYPES.map(type => (
-                        <button
-                          key={type}
-                          onClick={() => updateDayField(slot.day, "type", type)}
-                          style={{
-                            padding: "5px 12px", borderRadius: "6px", cursor: "pointer",
-                            fontSize: "11px", fontWeight: 600, transition: "all 0.15s",
-                            background: slot.type === type ? T.accentDim : "transparent",
-                            border: `1px solid ${slot.type === type ? T.accent : T.border}`,
-                            color: slot.type === type ? T.accent : T.muted,
-                          }}
-                        >
-                          {SESSION_TYPE_LABELS[type]}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {TIME_OPTIONS.map(time => (
-                        <button
-                          key={time}
-                          onClick={() => updateDayField(slot.day, "time", time)}
-                          style={{
-                            padding: "5px 12px", borderRadius: "6px", cursor: "pointer",
-                            fontSize: "11px", transition: "all 0.15s",
-                            background: slot.time === time ? T.surface : "transparent",
-                            border: `1px solid ${slot.time === time ? T.accent : T.border}`,
-                            color: slot.time === time ? T.text : T.muted,
-                          }}
-                        >
-                          {TIME_LABELS[time]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Calendar sync */}
-            {scheduleDays.length > 0 && (
-              <div style={{
-                background: `linear-gradient(135deg, ${T.surface2} 0%, rgba(200,169,110,0.05) 100%)`,
-                border: `1px solid ${T.border}`,
-                borderRadius: "12px", padding: "16px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
-                  <span style={{ fontSize: "20px" }}>📅</span>
-                  <div>
-                    <div style={{ fontSize: "14px", fontWeight: 600, color: T.text }}>Sync to your calendar</div>
-                    <div style={{ fontSize: "11px", color: T.muted }}>
-                      One tap — sessions appear automatically and stay updated.
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={openCalendar}
-                  style={{
-                    width: "100%", padding: "10px", borderRadius: "8px", cursor: "pointer",
-                    background: calendarLinked ? T.green + "18" : T.accentDim,
-                    border: `1px solid ${calendarLinked ? T.green : T.accent}`,
-                    color: calendarLinked ? T.green : T.accent,
-                    fontSize: "12px", fontWeight: 700, letterSpacing: "0.08em",
-                    fontFamily: "'BebasNeue', sans-serif",
-                  }}
-                >
-                  {calendarLinked ? "✓ CALENDAR LINKED" : "ADD TO CALENDAR (OPTIONAL)"}
-                </button>
-                <p style={{ fontSize: "10px", color: T.muted, margin: "8px 0 0", textAlign: "center" }}>
-                  Works with Apple Calendar, Google Calendar, and Outlook
-                </p>
-              </div>
-            )}
-
+          {scheduleContent}
+          <div style={{ padding: "0 24px 24px" }}>
             <button
               onClick={() => setStep("movement")}
               disabled={scheduleDays.length === 0}
@@ -915,147 +1185,115 @@ export default function OnboardingClient() {
     const testComplete = currentTestComplete();
     const isLast = movementIdx === MOVEMENT_TESTS.length - 1;
 
-    return (
-      <div style={containerStyle}>
-        <div style={cardStyle}>
-          <ProgressBar />
+    const movementContent = (
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: isMobile ? "16px 20px" : "20px 24px" }}>
+        {/* Test name + why */}
+        <div>
+          <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.4rem", letterSpacing: "0.04em", color: T.text, marginBottom: "6px" }}>
+            {test.name}
+          </div>
+          <div style={{ fontSize: "12px", color: T.muted, lineHeight: 1.6, fontStyle: "italic" }}>
+            {test.why}
+          </div>
+        </div>
 
-          {/* Header */}
-          <div style={{ padding: "16px 24px", borderBottom: `1px solid ${T.border}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em", color: T.accent }}>
-                MOVEMENT SCREEN
+        {/* Animation */}
+        <div style={{
+          background: T.surface2, border: `1px solid ${T.border}`,
+          borderRadius: "12px", padding: "24px",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          minHeight: "100px",
+        }}>
+          {TEST_ANIMATIONS[test.id]}
+        </div>
+
+        {/* Instructions */}
+        <div style={{ background: T.accentDim, border: `1px solid ${T.accent}30`, borderRadius: "10px", padding: "14px 16px" }}>
+          <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", color: T.accent, marginBottom: "6px" }}>
+            HOW TO DO IT
+          </div>
+          <div style={{ fontSize: "13px", lineHeight: 1.7, color: T.text }}>
+            {test.setup}
+          </div>
+        </div>
+
+        {/* Film this test */}
+        {test.film && (
+          <div style={{
+            background: T.surface2, border: `1px solid ${T.border}`,
+            borderRadius: "10px", padding: "14px 16px",
+            display: "flex", gap: "12px", alignItems: "flex-start",
+          }}>
+            <span style={{ fontSize: "18px", flexShrink: 0 }}>🎥</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: T.text, marginBottom: "4px" }}>
+                Film it for deeper analysis <span style={{ fontSize: "11px", fontWeight: 400, color: T.muted }}>(optional)</span>
               </div>
-              <div style={{ fontSize: "11px", color: T.muted }}>
-                {movementIdx + 1} / {MOVEMENT_TESTS.length}
+              <div style={{ fontSize: "11px", color: T.muted, lineHeight: 1.5, marginBottom: "10px" }}>
+                Record a 5-10 second clip from the side. Franklin will extract frames and analyze your movement pattern.
               </div>
-            </div>
-            {/* Mini progress */}
-            <div style={{ display: "flex", gap: "4px", marginTop: "10px" }}>
-              {MOVEMENT_TESTS.map((t, i) => (
-                <div key={t.id} style={{
-                  flex: 1, height: "3px", borderRadius: "99px",
-                  background: i < movementIdx ? T.green : i === movementIdx ? T.accent : T.border,
-                  transition: "all 0.3s",
-                }} />
-              ))}
+              {movementAnswers.overhead_squat?.video_analysis ? (
+                <div style={{ fontSize: "12px", color: T.green }}>✓ Video analyzed — findings captured</div>
+              ) : (
+                <button
+                  onClick={() => videoInputRef.current?.click()}
+                  disabled={videoAnalyzing}
+                  style={{
+                    background: T.accentDim, border: `1px solid ${T.accent}`,
+                    borderRadius: "7px", color: T.accent, cursor: "pointer",
+                    fontSize: "12px", fontWeight: 700, padding: "9px 18px",
+                    fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.06em",
+                    opacity: videoAnalyzing ? 0.6 : 1, minHeight: "40px",
+                  }}
+                >
+                  {videoAnalyzing ? "ANALYZING…" : "UPLOAD VIDEO"}
+                </button>
+              )}
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                style={{ display: "none" }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) analyzeMovementVideo(f); e.target.value = ""; }}
+              />
             </div>
           </div>
+        )}
 
-          <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "20px", overflowY: "auto", maxHeight: isMobile ? "calc(100vh - 160px)" : "600px" }}>
-
-            {/* Test name */}
-            <div>
-              <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.4rem", letterSpacing: "0.04em", color: T.text, marginBottom: "6px" }}>
-                {test.name}
-              </div>
-              <div style={{ fontSize: "12px", color: T.muted, lineHeight: 1.6, fontStyle: "italic" }}>
-                {test.why}
-              </div>
-            </div>
-
-            {/* Animation */}
-            <div style={{
-              background: T.surface2, border: `1px solid ${T.border}`,
-              borderRadius: "12px", padding: "24px",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              minHeight: "120px",
-            }}>
-              {TEST_ANIMATIONS[test.id]}
-            </div>
-
-            {/* Instructions */}
-            <div style={{
-              background: T.accentDim, border: `1px solid ${T.accent}30`,
-              borderRadius: "10px", padding: "14px 16px",
-            }}>
-              <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", color: T.accent, marginBottom: "6px" }}>
-                HOW TO DO IT
-              </div>
-              <div style={{ fontSize: "13px", lineHeight: 1.7, color: T.text }}>
-                {test.setup}
+        {/* Questions */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", color: T.muted }}>
+            WHAT DID YOU FIND?
+          </div>
+          {test.questions.map(q => (
+            <div key={q.id}>
+              <div style={{ fontSize: "13px", color: T.text, marginBottom: "8px", fontWeight: 500 }}>{q.label}</div>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                {q.options.map(opt => (
+                  <button
+                    key={opt}
+                    onClick={() => setAnswer(test.id, q.id, opt)}
+                    style={{
+                      minHeight: "40px", padding: "7px 14px", borderRadius: "7px", cursor: "pointer",
+                      fontSize: "12px", transition: "all 0.15s",
+                      background: answers[q.id] === opt ? T.accent : T.surface2,
+                      border: `1px solid ${answers[q.id] === opt ? T.accent : T.border}`,
+                      color: answers[q.id] === opt ? T.bg : T.muted,
+                      fontWeight: answers[q.id] === opt ? 700 : 400,
+                    }}
+                  >
+                    {opt}
+                  </button>
+                ))}
               </div>
             </div>
+          ))}
+        </div>
 
-            {/* Film this test — overhead squat only */}
-            {test.film && (
-              <div style={{
-                background: T.surface2, border: `1px solid ${T.border}`,
-                borderRadius: "10px", padding: "14px 16px",
-                display: "flex", gap: "12px", alignItems: "flex-start",
-              }}>
-                <span style={{ fontSize: "18px", flexShrink: 0 }}>🎥</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "13px", fontWeight: 600, color: T.text, marginBottom: "4px" }}>
-                    Film it for deeper analysis <span style={{ fontSize: "11px", fontWeight: 400, color: T.muted }}>(optional)</span>
-                  </div>
-                  <div style={{ fontSize: "11px", color: T.muted, lineHeight: 1.5, marginBottom: "10px" }}>
-                    Record a 5-10 second clip of your squat from the side. Franklin will extract frames and analyze your movement pattern.
-                  </div>
-                  {movementAnswers.overhead_squat?.video_analysis ? (
-                    <div style={{ fontSize: "12px", color: T.green }}>✓ Video analyzed — findings captured</div>
-                  ) : (
-                    <button
-                      onClick={() => videoInputRef.current?.click()}
-                      disabled={videoAnalyzing}
-                      style={{
-                        background: T.accentDim, border: `1px solid ${T.accent}`,
-                        borderRadius: "7px", color: T.accent, cursor: "pointer",
-                        fontSize: "12px", fontWeight: 700, padding: "7px 16px",
-                        fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.06em",
-                        opacity: videoAnalyzing ? 0.6 : 1,
-                      }}
-                    >
-                      {videoAnalyzing ? "ANALYZING…" : "UPLOAD VIDEO"}
-                    </button>
-                  )}
-                  <input
-                    ref={videoInputRef}
-                    type="file"
-                    accept="video/*"
-                    style={{ display: "none" }}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) analyzeMovementVideo(f); e.target.value = ""; }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Questions */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", color: T.muted }}>
-                WHAT DID YOU FIND?
-              </div>
-              {test.questions.map(q => (
-                <div key={q.id}>
-                  <div style={{ fontSize: "13px", color: T.text, marginBottom: "8px", fontWeight: 500 }}>{q.label}</div>
-                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                    {q.options.map(opt => (
-                      <button
-                        key={opt}
-                        onClick={() => setAnswer(test.id, q.id, opt)}
-                        style={{
-                          padding: "7px 14px", borderRadius: "7px", cursor: "pointer",
-                          fontSize: "12px", transition: "all 0.15s",
-                          background: answers[q.id] === opt ? T.accent : T.surface2,
-                          border: `1px solid ${answers[q.id] === opt ? T.accent : T.border}`,
-                          color: answers[q.id] === opt ? T.bg : T.muted,
-                          fontWeight: answers[q.id] === opt ? 700 : 400,
-                        }}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Next button */}
+        {!isMobile && (
+          <>
             <button
-              onClick={() => {
-                if (isLast) setStep("foundation");
-                else setMovementIdx(i => i + 1);
-              }}
+              onClick={() => { if (isLast) setStep("foundation"); else setMovementIdx(i => i + 1); }}
               disabled={!testComplete}
               style={{
                 background: testComplete ? T.accent : T.surface2,
@@ -1067,28 +1305,116 @@ export default function OnboardingClient() {
                 width: "100%", transition: "all 0.15s",
               }}
             >
-              {isLast ? "DONE — SEE YOUR FOUNDATION WEEK →" : `NEXT TEST →`}
+              {isLast ? "DONE — SEE YOUR FOUNDATION WEEK →" : "NEXT TEST →"}
             </button>
-
-            {/* Skip option */}
             <button
               onClick={() => {
-                // Record as skipped so Franklin knows it wasn't done
-                setMovementAnswers(prev => ({
-                  ...prev,
-                  [test.id]: { ...(prev[test.id] || {}), skipped: "true" },
-                }));
-                if (isLast) setStep("foundation");
-                else setMovementIdx(i => i + 1);
+                setMovementAnswers(prev => ({ ...prev, [test.id]: { ...(prev[test.id] || {}), skipped: "true" } }));
+                if (isLast) setStep("foundation"); else setMovementIdx(i => i + 1);
               }}
-              style={{
-                background: "none", border: "none", color: T.muted,
-                cursor: "pointer", fontSize: "11px", padding: "4px",
-                textDecoration: "underline", textDecorationColor: T.border,
-              }}
+              style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", fontSize: "11px", padding: "4px", textDecoration: "underline", textDecorationColor: T.border }}
             >
               Skip this test
             </button>
+          </>
+        )}
+      </div>
+    );
+
+    if (isMobile) {
+      return (
+        <div style={{
+          ...baseScreen, height: "100dvh",
+          display: "flex", flexDirection: "column",
+          paddingTop: "env(safe-area-inset-top)",
+        }}>
+          <StepProgress />
+
+          {/* Sticky movement header */}
+          <div style={{ padding: "12px 20px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+              <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "0.95rem", letterSpacing: "0.08em", color: T.accent }}>
+                MOVEMENT SCREEN
+              </div>
+              <div style={{ fontSize: "12px", color: T.muted, fontWeight: 600 }}>
+                {movementIdx + 1} / {MOVEMENT_TESTS.length}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "6px" }}>
+              {MOVEMENT_TESTS.map((t, i) => (
+                <div key={t.id} style={{
+                  flex: 1, height: "4px", borderRadius: "99px",
+                  background: i < movementIdx ? T.green : i === movementIdx ? T.accent : T.border,
+                  transition: "all 0.3s",
+                }} />
+              ))}
+            </div>
+          </div>
+
+          {/* Scrollable content */}
+          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}>
+            {movementContent}
+          </div>
+
+          {/* Fixed bottom CTA */}
+          <div style={{
+            flexShrink: 0, padding: "12px 20px",
+            paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+            borderTop: `1px solid ${T.border}`, background: T.surface,
+            display: "flex", flexDirection: "column", gap: "8px",
+          }}>
+            <button
+              onClick={() => { if (isLast) setStep("foundation"); else setMovementIdx(i => i + 1); }}
+              disabled={!testComplete}
+              style={{
+                background: testComplete ? T.accent : T.surface2,
+                border: `1px solid ${testComplete ? T.accent : T.border}`,
+                borderRadius: "10px", color: testComplete ? T.bg : T.muted,
+                cursor: testComplete ? "pointer" : "default",
+                fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem",
+                letterSpacing: "0.08em", padding: "15px",
+                width: "100%", transition: "all 0.15s",
+              }}
+            >
+              {isLast ? "DONE — SEE YOUR FOUNDATION WEEK →" : "NEXT TEST →"}
+            </button>
+            <button
+              onClick={() => {
+                setMovementAnswers(prev => ({ ...prev, [test.id]: { ...(prev[test.id] || {}), skipped: "true" } }));
+                if (isLast) setStep("foundation"); else setMovementIdx(i => i + 1);
+              }}
+              style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", fontSize: "12px", padding: "4px" }}
+            >
+              Skip this test
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+        <div style={desktopCard}>
+          <StepProgress />
+          <div style={{ padding: "16px 24px", borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em", color: T.accent }}>
+                MOVEMENT SCREEN
+              </div>
+              <div style={{ fontSize: "11px", color: T.muted }}>{movementIdx + 1} / {MOVEMENT_TESTS.length}</div>
+            </div>
+            <div style={{ display: "flex", gap: "4px", marginTop: "10px" }}>
+              {MOVEMENT_TESTS.map((t, i) => (
+                <div key={t.id} style={{
+                  flex: 1, height: "3px", borderRadius: "99px",
+                  background: i < movementIdx ? T.green : i === movementIdx ? T.accent : T.border,
+                  transition: "all 0.3s",
+                }} />
+              ))}
+            </div>
+          </div>
+          <div style={{ padding: "20px 24px", overflowY: "auto", maxHeight: "600px" }}>
+            {movementContent}
           </div>
         </div>
       </div>
@@ -1097,107 +1423,146 @@ export default function OnboardingClient() {
 
   // ── STEP: FOUNDATION ─────────────────────────────────────────────────────────
   if (step === "foundation") {
-    return (
-      <div style={containerStyle}>
-        <div style={cardStyle}>
-          <ProgressBar />
-          <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "24px", overflowY: "auto", maxHeight: isMobile ? "100vh" : "700px" }}>
-
-            {/* Franklin brief */}
+    const foundationContent = (
+      <div style={{ display: "flex", flexDirection: "column", gap: "24px", padding: isMobile ? "20px 20px" : "20px 24px" }}>
+        {/* Franklin brief */}
+        <div style={{
+          background: `linear-gradient(135deg, ${T.surface2} 0%, rgba(200,169,110,0.06) 100%)`,
+          border: `1px solid ${T.accent}30`, borderRadius: "14px", padding: "22px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
             <div style={{
-              background: `linear-gradient(135deg, ${T.surface2} 0%, rgba(200,169,110,0.06) 100%)`,
-              border: `1px solid ${T.accent}30`,
-              borderRadius: "14px", padding: "22px",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-                <div style={{
-                  width: "36px", height: "36px", borderRadius: "50%",
-                  background: T.accent, display: "flex", alignItems: "center",
-                  justifyContent: "center", fontSize: "13px", color: T.bg,
-                  fontWeight: 700, flexShrink: 0,
-                }}>CF</div>
-                <div>
-                  <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.06em", color: T.accent }}>
-                    COACH FRANKLIN
-                  </div>
-                  <div style={{ fontSize: "10px", color: T.muted }}>Your Foundation Week</div>
-                </div>
-              </div>
-              <p style={{ fontSize: "14px", lineHeight: 1.85, color: T.text, margin: 0 }}>
-                I could hand you a program right now. I&apos;m not going to — not yet.
-              </p>
-              <p style={{ fontSize: "14px", lineHeight: 1.85, color: T.muted, margin: "12px 0 0" }}>
-                This first week is designed to <em style={{ color: T.text, fontStyle: "normal" }}>read you</em>.
-                How you respond to volume. What your real recovery looks like.
-                Where your movement findings show up under actual load. After 7 days of
-                real training data, I&apos;ll have what no intake form can give me.
-                Then I build your actual program around what I&apos;ve learned.
-              </p>
-              <p style={{ fontSize: "14px", lineHeight: 1.85, color: T.muted, margin: "12px 0 0" }}>
-                Train honestly this week. <em style={{ color: T.text, fontStyle: "normal" }}>The numbers don&apos;t matter — the patterns do.</em>
-              </p>
-            </div>
-
-            {/* What Franklin is watching for */}
+              width: "40px", height: "40px", borderRadius: "50%",
+              background: T.accent, display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: "13px", color: T.bg,
+              fontWeight: 700, flexShrink: 0,
+            }}>CF</div>
             <div>
-              <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: T.muted, marginBottom: "12px" }}>
-                WHAT FRANKLIN IS WATCHING FOR
+              <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.06em", color: T.accent }}>
+                COACH FRANKLIN
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {[
-                  ["📊", "Volume tolerance", "How your body handles the training load across the week"],
-                  ["⚡", "Strength baselines", "One calibration set per major pattern to anchor future percentages"],
-                  ["🔄", "Recovery patterns", "How you feel 24h after each session tells me your capacity"],
-                  ["⚖️", "Side-to-side balance", "Whether your movement screen findings show up under load"],
-                ].map(([icon, title, desc]) => (
-                  <div key={title as string} style={{
-                    background: T.surface2, border: `1px solid ${T.border}`,
-                    borderRadius: "10px", padding: "12px 14px",
-                    display: "flex", gap: "12px", alignItems: "flex-start",
-                  }}>
-                    <span style={{ fontSize: "16px", flexShrink: 0 }}>{icon}</span>
-                    <div>
-                      <div style={{ fontSize: "13px", fontWeight: 600, color: T.text, marginBottom: "2px" }}>{title}</div>
-                      <div style={{ fontSize: "11px", color: T.muted, lineHeight: 1.5 }}>{desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <div style={{ fontSize: "10px", color: T.muted }}>Your Foundation Week</div>
             </div>
+          </div>
+          <p style={{ fontSize: "14px", lineHeight: 1.85, color: T.text, margin: 0 }}>
+            I could hand you a program right now. I&apos;m not going to — not yet.
+          </p>
+          <p style={{ fontSize: "14px", lineHeight: 1.85, color: T.muted, margin: "12px 0 0" }}>
+            This first week is designed to <em style={{ color: T.text, fontStyle: "normal" }}>read you</em>.
+            How you respond to volume. What your real recovery looks like.
+            Where your movement findings show up under actual load. After 7 days of
+            real training data, I&apos;ll have what no intake form can give me.
+            Then I build your actual program around what I&apos;ve learned.
+          </p>
+          <p style={{ fontSize: "14px", lineHeight: 1.85, color: T.muted, margin: "12px 0 0" }}>
+            Train honestly this week. <em style={{ color: T.text, fontStyle: "normal" }}>The numbers don&apos;t matter — the patterns do.</em>
+          </p>
+        </div>
 
-            {/* What you need to do */}
-            <div style={{
-              background: T.surface2, border: `1px solid ${T.border}`,
-              borderLeft: `3px solid ${T.accent}`,
-              borderRadius: "0 10px 10px 0", padding: "14px 16px",
-            }}>
-              <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", color: T.accent, marginBottom: "8px" }}>
-                YOUR JOB THIS WEEK
-              </div>
-              <div style={{ fontSize: "13px", color: T.muted, lineHeight: 1.8 }}>
-                Show up on your scheduled days. Log your sessions — takes 2 minutes after each one.
-                Check in with your readiness each morning. After 7 days, Franklin debriefs you.
-              </div>
-            </div>
-
-            {/* Postural screening callout */}
-            <div style={{
-              background: T.accentDim, border: `1px solid ${T.accent}30`,
-              borderRadius: "12px", padding: "16px",
-              display: "flex", gap: "14px", alignItems: "flex-start",
-            }}>
-              <span style={{ fontSize: "22px", flexShrink: 0 }}>📸</span>
-              <div>
-                <div style={{ fontSize: "14px", fontWeight: 600, color: T.text, marginBottom: "4px" }}>
-                  Postural screening — anytime this week
-                </div>
-                <div style={{ fontSize: "12px", color: T.muted, lineHeight: 1.6 }}>
-                  Whenever you have 5 minutes and a plain wall: go to the Assessment tab and run your postural screening.
-                  Franklin will analyze your photos and build a full movement report around your findings today.
+        {/* What Franklin is watching for */}
+        <div>
+          <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: T.muted, marginBottom: "12px" }}>
+            WHAT FRANKLIN IS WATCHING FOR
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[
+              ["📊", "Volume tolerance", "How your body handles the training load across the week"],
+              ["⚡", "Strength baselines", "One calibration set per major pattern to anchor future percentages"],
+              ["🔄", "Recovery patterns", "How you feel 24h after each session tells me your capacity"],
+              ["⚖️", "Side-to-side balance", "Whether your movement screen findings show up under load"],
+            ].map(([icon, title, desc]) => (
+              <div key={title as string} style={{
+                background: T.surface2, border: `1px solid ${T.border}`,
+                borderRadius: "10px", padding: "12px 14px",
+                display: "flex", gap: "12px", alignItems: "flex-start",
+              }}>
+                <span style={{ fontSize: "16px", flexShrink: 0 }}>{icon}</span>
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: 600, color: T.text, marginBottom: "2px" }}>{title}</div>
+                  <div style={{ fontSize: "11px", color: T.muted, lineHeight: 1.5 }}>{desc}</div>
                 </div>
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
 
+        {/* Your job */}
+        <div style={{
+          background: T.surface2, border: `1px solid ${T.border}`,
+          borderLeft: `3px solid ${T.accent}`,
+          borderRadius: "0 10px 10px 0", padding: "14px 16px",
+        }}>
+          <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", color: T.accent, marginBottom: "8px" }}>
+            YOUR JOB THIS WEEK
+          </div>
+          <div style={{ fontSize: "13px", color: T.muted, lineHeight: 1.8 }}>
+            Show up on your scheduled days. Log your sessions — takes 2 minutes after each one.
+            Check in with your readiness each morning. After 7 days, Franklin debriefs you.
+          </div>
+        </div>
+
+        {/* Postural screening */}
+        <div style={{
+          background: T.accentDim, border: `1px solid ${T.accent}30`,
+          borderRadius: "12px", padding: "16px",
+          display: "flex", gap: "14px", alignItems: "flex-start",
+        }}>
+          <span style={{ fontSize: "22px", flexShrink: 0 }}>📸</span>
+          <div>
+            <div style={{ fontSize: "14px", fontWeight: 600, color: T.text, marginBottom: "4px" }}>
+              Postural screening — anytime this week
+            </div>
+            <div style={{ fontSize: "12px", color: T.muted, lineHeight: 1.6 }}>
+              Whenever you have 5 minutes and a plain wall: go to the Assessment tab and run your postural screening.
+              Franklin will analyze your photos and build a full movement report around your findings today.
+            </div>
+          </div>
+        </div>
+
+        {!isMobile && (
+          <button
+            onClick={finishOnboarding}
+            disabled={saving}
+            style={{
+              background: saving ? T.surface2 : T.accent,
+              border: `1px solid ${saving ? T.border : T.accent}`,
+              borderRadius: "10px", color: saving ? T.muted : T.bg,
+              cursor: saving ? "default" : "pointer",
+              fontFamily: "'BebasNeue', sans-serif", fontSize: "1.2rem",
+              letterSpacing: "0.1em", padding: "16px",
+              width: "100%", transition: "all 0.15s",
+            }}
+          >
+            {saving ? "SETTING UP YOUR DASHBOARD…" : "ENTER THE SYSTEM →"}
+          </button>
+        )}
+      </div>
+    );
+
+    if (isMobile) {
+      return (
+        <div style={{
+          ...baseScreen, height: "100dvh",
+          display: "flex", flexDirection: "column",
+          paddingTop: "env(safe-area-inset-top)",
+        }}>
+          <StepProgress />
+          <div style={{ padding: "14px 20px 12px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "0.95rem", letterSpacing: "0.08em", color: T.accent }}>
+              FOUNDATION WEEK
+            </div>
+            <div style={{ fontSize: "11px", color: T.muted, marginTop: "2px" }}>
+              Your first week in the system starts now.
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}>
+            {foundationContent}
+          </div>
+          <div style={{
+            flexShrink: 0, padding: "12px 20px",
+            paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+            borderTop: `1px solid ${T.border}`, background: T.surface,
+          }}>
             <button
               onClick={finishOnboarding}
               disabled={saving}
@@ -1206,13 +1571,24 @@ export default function OnboardingClient() {
                 border: `1px solid ${saving ? T.border : T.accent}`,
                 borderRadius: "10px", color: saving ? T.muted : T.bg,
                 cursor: saving ? "default" : "pointer",
-                fontFamily: "'BebasNeue', sans-serif", fontSize: "1.2rem",
+                fontFamily: "'BebasNeue', sans-serif", fontSize: "1.1rem",
                 letterSpacing: "0.1em", padding: "16px",
                 width: "100%", transition: "all 0.15s",
               }}
             >
               {saving ? "SETTING UP YOUR DASHBOARD…" : "ENTER THE SYSTEM →"}
             </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+        <div style={desktopCard}>
+          <StepProgress />
+          <div style={{ overflowY: "auto", maxHeight: "700px" }}>
+            {foundationContent}
           </div>
         </div>
       </div>

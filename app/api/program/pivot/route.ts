@@ -5,15 +5,18 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
 export const maxDuration = 60;
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 const client = new Anthropic();
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { messages, message } = await req.json() as {
     messages: { role: string; content: string }[];
     message: string;
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
   const { data: athlete } = await sb
     .from("athletes")
     .select("full_name, goals, training_schedule")
-    .eq("id", ATHLETE_ID)
+    .eq("id", athleteId)
     .single();
 
   const schedule = athlete?.training_schedule as { days?: { day: string; type: string }[] } | null;

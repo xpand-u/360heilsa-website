@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { readiness_call, hrv_sdnn, sleep_total_h, resting_hr, notes } =
     await req.json();
 
@@ -15,7 +18,7 @@ export async function POST(req: NextRequest) {
   const today = new Date().toISOString().split("T")[0];
 
   const row: Record<string, unknown> = {
-    athlete_id:    ATHLETE_ID,
+    athlete_id:    athleteId,
     metric_date:   today,
     readiness_call,
     updated_at:    new Date().toISOString(),

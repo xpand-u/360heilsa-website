@@ -290,12 +290,14 @@ export default function DashboardClient() {
 
   const fetchData = useCallback(async () => {
     setRefreshing(true);
-    const d = await fetch("/api/dashboard/state").then(r => r.json());
+    const res = await fetch("/api/dashboard/state");
+    if (res.status === 401) { router.push("/login"); return; }
+    const d = await res.json();
     setData(d);
     setLogEntries(d.scratch?.entries || []);
     setLastRefreshed(new Date());
     setRefreshing(false);
-  }, []);
+  }, [router]);
 
   const fetchRuns = useCallback(async () => {
     if (runsLoading) return;
@@ -992,67 +994,104 @@ export default function DashboardClient() {
   return (
     <div style={{ background: T.bg, minHeight: "100vh", color: T.text, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", display: "flex", flexDirection: "column" }}>
 
-      {/* ── TOP NAV ── */}
-      <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: "52px", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "12px" : "28px" }}>
-          <span style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.4rem", letterSpacing: "0.08em", color: T.accent }}>
-            360 HEILSA
-          </span>
-          <div style={{ display: "flex", gap: "2px" }}>
-            {([["today", "TODAY"], ["program", "PROGRAM"], ["history", "HISTORY"], ["running", "RUNNING"], ["assessment", "ASSESSMENT"], ["nutrition", "NUTRITION"]] as [NavItem, string][]).map(([id, label]) => (
-              <button key={id} onClick={() => setNav(id)} style={{
-                border: "none", cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
-                fontSize: isMobile ? "0.75rem" : "0.9rem", letterSpacing: "0.08em",
-                padding: isMobile ? "4px 8px" : "4px 14px", borderRadius: "6px",
-                color: nav === id ? T.accent : T.muted,
-                background: nav === id ? T.accentDim : "transparent",
-              } as any}>{label}</button>
-            ))}
+      {/* ── TOP NAV (desktop) ── */}
+      {!isMobile && (
+        <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: "52px", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
+            <span style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.4rem", letterSpacing: "0.08em", color: T.accent }}>
+              360 HEILSA
+            </span>
+            <div style={{ display: "flex", gap: "2px" }}>
+              {([["today", "TODAY"], ["program", "PROGRAM"], ["history", "HISTORY"], ["running", "RUNNING"], ["assessment", "ASSESSMENT"], ["nutrition", "NUTRITION"]] as [NavItem, string][]).map(([id, label]) => (
+                <button key={id} onClick={() => setNav(id)} style={{
+                  border: "none", cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
+                  fontSize: "0.9rem", letterSpacing: "0.08em",
+                  padding: "4px 14px", borderRadius: "6px",
+                  color: nav === id ? T.accent : T.muted,
+                  background: nav === id ? T.accentDim : "transparent",
+                } as any}>{label}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {lastRefreshed && (
+              <span style={{ fontSize: "10px", color: T.muted }}>
+                {lastRefreshed.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+            <button onClick={fetchData} disabled={refreshing} style={{
+              background: "none", border: `1px solid ${T.border}`, borderRadius: "6px",
+              color: refreshing ? T.accent : T.muted, cursor: "pointer",
+              fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em",
+              padding: "4px 10px", fontFamily: "'BebasNeue', sans-serif",
+            }}>
+              {refreshing ? "..." : "↻"}
+            </button>
+            <span style={{ fontSize: "12px", color: T.muted, textTransform: "capitalize" }}>{data.todayStr}</span>
+            <button onClick={() => setChatOpen(o => !o)} style={{
+              background: chatOpen ? T.accentDim : "none",
+              border: `1px solid ${chatOpen ? T.accent : T.border}`,
+              borderRadius: "6px", color: chatOpen ? T.accent : T.muted,
+              cursor: "pointer", fontSize: "11px", fontWeight: 600,
+              letterSpacing: "0.06em", padding: "4px 10px",
+              fontFamily: "'BebasNeue', sans-serif",
+            }}>
+              {chatOpen ? "CLOSE" : "COACH"}
+            </button>
+            <a href="/dashboard/settings" style={{
+              fontSize: "11px", color: T.muted, textDecoration: "none",
+              fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.06em",
+              padding: "4px 10px", border: `1px solid ${T.border}`, borderRadius: "6px",
+            }}>⚙</a>
+            <a href="/" style={{ fontSize: "11px", color: T.muted, textDecoration: "none" }}>← WEBSITE</a>
+            <button
+              onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }}
+              style={{
+                background: "none", border: `1px solid ${T.border}`, borderRadius: "6px",
+                color: T.muted, cursor: "pointer", fontSize: "11px", fontWeight: 600,
+                letterSpacing: "0.06em", padding: "4px 10px",
+                fontFamily: "'BebasNeue', sans-serif",
+              }}
+            >
+              SIGN OUT
+            </button>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {!isMobile && lastRefreshed && (
-            <span style={{ fontSize: "10px", color: T.muted }}>
-              {lastRefreshed.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          )}
-          <button onClick={fetchData} disabled={refreshing} style={{
-            background: "none", border: `1px solid ${T.border}`, borderRadius: "6px",
-            color: refreshing ? T.accent : T.muted, cursor: "pointer",
-            fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em",
-            padding: "4px 10px", fontFamily: "'BebasNeue', sans-serif",
-          }}>
-            {refreshing ? "..." : "↻"}
-          </button>
-          {!isMobile && (
-            <span style={{ fontSize: "12px", color: T.muted, textTransform: "capitalize" }}>{data.todayStr}</span>
-          )}
-          <button onClick={() => setChatOpen(o => !o)} style={{
-            background: chatOpen ? T.accentDim : "none",
-            border: `1px solid ${chatOpen ? T.accent : T.border}`,
-            borderRadius: "6px", color: chatOpen ? T.accent : T.muted,
-            cursor: "pointer", fontSize: "11px", fontWeight: 600,
-            letterSpacing: "0.06em", padding: "4px 10px",
-            fontFamily: "'BebasNeue', sans-serif",
-          }}>
-            {chatOpen ? (isMobile ? "×" : "CLOSE") : "COACH"}
-          </button>
-          <a href="/dashboard/settings" style={{
-            fontSize: "11px", color: T.muted, textDecoration: "none",
-            fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.06em",
-            padding: "4px 10px", border: `1px solid ${T.border}`, borderRadius: "6px",
-          }}>⚙</a>
-          {!isMobile && (
-            <a href="/" style={{ fontSize: "11px", color: T.muted, textDecoration: "none" }}>← WEBSITE</a>
-          )}
+      )}
+
+      {/* ── MOBILE TOP BAR ── */}
+      {isMobile && (
+        <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: "52px", flexShrink: 0 }}>
+          <span style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.3rem", letterSpacing: "0.08em", color: T.accent }}>
+            360 HEILSA
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <button onClick={fetchData} disabled={refreshing} style={{
+              background: "none", border: `1px solid ${T.border}`, borderRadius: "6px",
+              color: refreshing ? T.accent : T.muted, cursor: "pointer",
+              fontSize: "14px", padding: "6px 10px",
+            }}>
+              {refreshing ? "·" : "↻"}
+            </button>
+            <button onClick={() => setChatOpen(o => !o)} style={{
+              background: chatOpen ? T.accentDim : "none",
+              border: `1px solid ${chatOpen ? T.accent : T.border}`,
+              borderRadius: "6px", color: chatOpen ? T.accent : T.muted,
+              cursor: "pointer", fontSize: "11px", fontWeight: 600,
+              letterSpacing: "0.06em", padding: "6px 10px",
+              fontFamily: "'BebasNeue', sans-serif",
+            }}>
+              {chatOpen ? "✕" : "COACH"}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── BODY ── */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
 
         {/* ── MAIN CONTENT ── */}
-        <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "12px" : "20px 24px" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "12px 12px 80px" : "20px 24px" }}>
 
           {/* READINESS HERO */}
           <div style={{
@@ -3381,6 +3420,59 @@ export default function DashboardClient() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── MOBILE BOTTOM TAB BAR ── */}
+      {isMobile && (
+        <div style={{
+          position: "fixed", bottom: 0, left: 0, right: 0,
+          background: T.surface, borderTop: `1px solid ${T.border}`,
+          display: "flex", zIndex: 100,
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}>
+          {([
+            ["today", "TODAY", "🏠"],
+            ["program", "PROGRAM", "📋"],
+            ["history", "HISTORY", "📊"],
+            ["assessment", "ASSESS", "📸"],
+            ["nutrition", "NUTRITION", "🥗"],
+          ] as [NavItem, string, string][]).map(([id, label, icon]) => (
+            <button
+              key={id}
+              onClick={() => setNav(id)}
+              style={{
+                flex: 1, border: "none", background: "transparent",
+                display: "flex", flexDirection: "column", alignItems: "center",
+                justifyContent: "center", padding: "10px 4px 8px",
+                cursor: "pointer",
+                color: nav === id ? T.accent : T.muted,
+                borderTop: nav === id ? `2px solid ${T.accent}` : "2px solid transparent",
+              }}
+            >
+              <span style={{ fontSize: "18px", lineHeight: 1 }}>{icon}</span>
+              <span style={{
+                fontSize: "9px", fontFamily: "'BebasNeue', sans-serif",
+                letterSpacing: "0.08em", marginTop: "3px",
+              }}>
+                {label}
+              </span>
+            </button>
+          ))}
+          <button
+            onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }}
+            style={{
+              flex: 1, border: "none", background: "transparent",
+              display: "flex", flexDirection: "column", alignItems: "center",
+              justifyContent: "center", padding: "10px 4px 8px",
+              cursor: "pointer", color: T.muted, borderTop: "2px solid transparent",
+            }}
+          >
+            <span style={{ fontSize: "18px", lineHeight: 1 }}>↩</span>
+            <span style={{ fontSize: "9px", fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.08em", marginTop: "3px" }}>
+              EXIT
+            </span>
+          </button>
         </div>
       )}
     </div>

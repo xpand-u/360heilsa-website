@@ -5,16 +5,19 @@
 
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export async function GET() {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sb = createServerClient();
 
   const { data, error } = await sb
     .from("athletes")
     .select("onboarding_complete, onboarding_data, training_schedule, movement_results, calendar_token")
-    .eq("id", ATHLETE_ID)
+    .eq("id", athleteId)
     .single();
 
   if (error) {

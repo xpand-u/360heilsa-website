@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { note } = await req.json();
   if (!note?.trim()) return NextResponse.json({ error: "empty" }, { status: 400 });
 
@@ -13,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   // Get or create today's scratch
   const existing = await sb.from("session_scratch").select("*")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("scratch_date", today)
     .eq("scratch_status", "active")
     .maybeSingle();
@@ -28,11 +31,11 @@ export async function POST(req: NextRequest) {
   } else {
     // Get current session label
     const sessionRes = await sb.from("next_session").select("session_label")
-      .eq("athlete_id", ATHLETE_ID).maybeSingle();
+      .eq("athlete_id", athleteId).maybeSingle();
     const label = sessionRes.data?.session_label || "Session";
 
     const { data } = await sb.from("session_scratch").insert({
-      athlete_id: ATHLETE_ID,
+      athlete_id: athleteId,
       scratch_date: today,
       session_label: label,
       entries: [entry],
@@ -45,11 +48,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sb = createServerClient();
   const today = new Date().toISOString().split("T")[0];
 
   const { data } = await sb.from("session_scratch").select("*")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("scratch_date", today)
     .eq("scratch_status", "active")
     .maybeSingle();

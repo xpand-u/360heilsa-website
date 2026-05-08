@@ -9,10 +9,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
 export const maxDuration = 120;
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 const client = new Anthropic();
 
 const DAY_OFFSETS: Record<string, number> = {
@@ -35,6 +35,9 @@ function addDays(date: Date, days: number): string {
 }
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { pivot = false, new_goal, pivot_context } = await req.json().catch(() => ({}));
 
   const sb = createServerClient();
@@ -43,27 +46,27 @@ export async function POST(req: NextRequest) {
   const [athleteRes, logsRes, healthRes, assessRes, blockRes] = await Promise.all([
     sb.from("athletes")
       .select("full_name, goals, goals_structured, training_schedule, movement_results, training_age_years, gym, coach_notes")
-      .eq("id", ATHLETE_ID)
+      .eq("id", athleteId)
       .single(),
     sb.from("session_logs")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("log_date", { ascending: false })
       .limit(20),
     sb.from("health_metrics")
       .select("hrv_sdnn, sleep_total_h, resting_hr, readiness_call, metric_date")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("metric_date", { ascending: false })
       .limit(14),
     sb.from("assessments")
       .select("dominant_pattern, shoulder_finding, full_notes_md")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("assessment_date", { ascending: false })
       .limit(1)
       .maybeSingle(),
     sb.from("training_blocks")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .eq("status", "active")
       .maybeSingle(),
   ]);
@@ -200,7 +203,7 @@ Generate ALL sessions for ALL ${Math.min(sessionsPerWeek * 4, 20)} planned train
 
     if (new_goal) {
       await sb.from("goal_pivots").insert({
-        athlete_id:    ATHLETE_ID,
+        athlete_id:    athleteId,
         previous_goal: athlete?.goals || null,
         new_goal,
         franklin_note: pivot_context || null,
@@ -209,7 +212,7 @@ Generate ALL sessions for ALL ${Math.min(sessionsPerWeek * 4, 20)} planned train
       // Update athlete goals
       await sb.from("athletes")
         .update({ goals: new_goal, goals_structured: { goals: new_goal } })
-        .eq("id", ATHLETE_ID);
+        .eq("id", athleteId);
     }
   } else if (prevBlock) {
     // Mark existing block as completed (not pivoted)
@@ -225,7 +228,7 @@ Generate ALL sessions for ALL ${Math.min(sessionsPerWeek * 4, 20)} planned train
   const { data: newBlock, error: blockErr } = await sb
     .from("training_blocks")
     .insert({
-      athlete_id:    ATHLETE_ID,
+      athlete_id:    athleteId,
       name:          generated.block.name,
       intent:        generated.block.intent,
       phase:         generated.block.phase,
@@ -265,7 +268,7 @@ Generate ALL sessions for ALL ${Math.min(sessionsPerWeek * 4, 20)} planned train
       const scheduledDate = addDays(weekStart, offset);
 
       sessionRows.push({
-        athlete_id:         ATHLETE_ID,
+        athlete_id:         athleteId,
         block_id:           newBlock.id,
         scheduled_date:     scheduledDate,
         session_type:       s.type || trainingDay.type || "lifting",
@@ -281,7 +284,7 @@ Generate ALL sessions for ALL ${Math.min(sessionsPerWeek * 4, 20)} planned train
 
     // Weekly state row
     weeklyStatRows.push({
-      athlete_id:        ATHLETE_ID,
+      athlete_id:        athleteId,
       week_start_date:   weekStart.toISOString().split("T")[0],
       sessions_planned:  weekSessions.length || sessionsPerWeek,
       sessions_completed: 0,

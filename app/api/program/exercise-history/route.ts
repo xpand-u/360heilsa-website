@@ -5,10 +5,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export async function GET(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const exercise = req.nextUrl.searchParams.get("exercise")?.trim();
   if (!exercise || exercise.length < 2) {
     return NextResponse.json({ history: [] });
@@ -20,7 +23,7 @@ export async function GET(req: NextRequest) {
   const { data: logs } = await sb
     .from("session_logs")
     .select("log_date, top_sets, session_type")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .not("top_sets", "is", null)
     .order("log_date", { ascending: false })
     .limit(60);

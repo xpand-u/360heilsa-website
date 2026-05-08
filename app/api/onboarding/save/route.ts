@@ -7,10 +7,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 import crypto from "crypto";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { intake_data, schedule_data, movement_results, intake_summary } =
     await req.json();
 
@@ -20,7 +23,7 @@ export async function POST(req: NextRequest) {
   const { data: existing } = await sb
     .from("athletes")
     .select("calendar_token")
-    .eq("id", ATHLETE_ID)
+    .eq("id", athleteId)
     .single();
 
   const calendarToken = existing?.calendar_token || crypto.randomBytes(16).toString("hex");
@@ -57,7 +60,7 @@ export async function POST(req: NextRequest) {
   const { error } = await sb
     .from("athletes")
     .update(updatePayload)
-    .eq("id", ATHLETE_ID);
+    .eq("id", athleteId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

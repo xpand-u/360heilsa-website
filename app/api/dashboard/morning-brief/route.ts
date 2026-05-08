@@ -1,11 +1,14 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase-server";
 import { computeCyclePhase } from "@/app/api/cycle/log/route";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export async function POST(_req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const sb = createServerClient();
   const today = new Date().toISOString().split("T")[0];
@@ -15,36 +18,36 @@ export async function POST(_req: NextRequest) {
       sb
         .from("athletes")
         .select("full_name, goals, training_schedule, onboarding_data, tracks_cycle, avg_cycle_length")
-        .eq("id", ATHLETE_ID)
+        .eq("id", athleteId)
         .single(),
       sb
         .from("next_session")
         .select("*")
-        .eq("athlete_id", ATHLETE_ID)
+        .eq("athlete_id", athleteId)
         .maybeSingle(),
       sb
         .from("health_metrics")
         .select("*")
-        .eq("athlete_id", ATHLETE_ID)
+        .eq("athlete_id", athleteId)
         .eq("metric_date", today)
         .maybeSingle(),
       sb
         .from("training_blocks")
         .select("*")
-        .eq("athlete_id", ATHLETE_ID)
+        .eq("athlete_id", athleteId)
         .eq("status", "active")
         .maybeSingle(),
       sb
         .from("weekly_state")
         .select("*")
-        .eq("athlete_id", ATHLETE_ID)
+        .eq("athlete_id", athleteId)
         .order("week_start_date", { ascending: false })
         .limit(1)
         .maybeSingle(),
       sb
         .from("limitations")
         .select("*")
-        .eq("athlete_id", ATHLETE_ID)
+        .eq("athlete_id", athleteId)
         .neq("status", "resolved"),
     ]);
 
@@ -55,7 +58,7 @@ export async function POST(_req: NextRequest) {
     const fallback = await sb
       .from("health_metrics")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("metric_date", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -69,7 +72,7 @@ export async function POST(_req: NextRequest) {
   const trendRes = await sb
     .from("health_metrics")
     .select("metric_date,hrv_sdnn,sleep_total_h,resting_hr,readiness_call")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .gte("metric_date", sevenAgo.toISOString().split("T")[0])
     .order("metric_date");
 
@@ -86,7 +89,7 @@ export async function POST(_req: NextRequest) {
     const { data: cycleLog } = await sb
       .from("cycle_logs")
       .select("period_start_date, cycle_length_est")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("period_start_date", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -106,7 +109,7 @@ export async function POST(_req: NextRequest) {
   const { data: recentLogs } = await sb
     .from("session_logs")
     .select("top_sets, log_date")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .gte("log_date", threeDaysAgo.toISOString().split("T")[0])
     .order("log_date", { ascending: false })
     .limit(3);

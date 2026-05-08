@@ -8,10 +8,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const {
     session_type,
     log_date,
@@ -31,7 +34,7 @@ export async function POST(req: NextRequest) {
   const date = log_date || new Date().toISOString().split("T")[0];
 
   const row: Record<string, unknown> = {
-    athlete_id:   ATHLETE_ID,
+    athlete_id:   athleteId,
     log_date:     date,
     session_type,
   };
@@ -53,7 +56,7 @@ export async function POST(req: NextRequest) {
   // Also mark the planned session as completed if one exists for this date
   await sb.from("sessions")
     .update({ status: "completed" })
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("scheduled_date", date)
     .eq("status", "planned");
 
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
     const { data: allLogs } = await sb
       .from("session_logs")
       .select("id, top_sets")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .neq("id", data.id)
       .not("top_sets", "is", null)
       .order("log_date", { ascending: false })
@@ -112,11 +115,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sb = createServerClient();
   const { data } = await sb
     .from("session_logs")
     .select("*")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .order("log_date", { ascending: false })
     .limit(30);
 

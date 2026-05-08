@@ -5,10 +5,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 export async function GET(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = req.nextUrl;
   const sport  = searchParams.get("sport");     // optional filter e.g. "Run"
   const limit  = Math.min(parseInt(searchParams.get("limit")  || "60"), 200);
@@ -19,7 +22,7 @@ export async function GET(req: NextRequest) {
   let query = sb
     .from("strava_activities")
     .select("strava_id,sport_type,name,activity_date,start_time,distance_km,duration_min,avg_hr,max_hr,avg_pace_min_km,avg_speed_kmh,aerobic_efficiency,elevation_gain_m,calories,strava_url,has_heartrate")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .order("activity_date", { ascending: false })
     .range(offset, offset + limit - 1);
 

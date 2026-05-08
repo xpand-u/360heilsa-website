@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 import { computeCyclePhase } from "@/app/api/cycle/log/route";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 function daysUntil(dateStr: string): number | null {
   if (!dateStr) return null;
@@ -17,6 +17,9 @@ function blockWeek(startedAt: string): number {
 }
 
 export async function GET() {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sb = createServerClient();
   const today = new Date().toISOString().split("T")[0];
 
@@ -29,34 +32,34 @@ export async function GET() {
 
   const [nextSessionRes, weeklyStateRes, healthRes, blockRes, limitationsRes, athleteRes] =
     await Promise.all([
-      sb.from("next_session").select("*").eq("athlete_id", ATHLETE_ID).maybeSingle(),
-      sb.from("weekly_state").select("*").eq("athlete_id", ATHLETE_ID)
+      sb.from("next_session").select("*").eq("athlete_id", athleteId).maybeSingle(),
+      sb.from("weekly_state").select("*").eq("athlete_id", athleteId)
         .order("week_start_date", { ascending: false }).limit(1).maybeSingle(),
-      sb.from("health_metrics").select("*").eq("athlete_id", ATHLETE_ID)
+      sb.from("health_metrics").select("*").eq("athlete_id", athleteId)
         .eq("metric_date", today).maybeSingle(),
-      sb.from("training_blocks").select("*").eq("athlete_id", ATHLETE_ID)
+      sb.from("training_blocks").select("*").eq("athlete_id", athleteId)
         .eq("status", "active").maybeSingle(),
-      sb.from("limitations").select("*").eq("athlete_id", ATHLETE_ID)
+      sb.from("limitations").select("*").eq("athlete_id", athleteId)
         .neq("status", "resolved"),
       sb.from("athletes").select("full_name, goals, onboarding_complete, onboarding_completed_at, tracks_cycle, avg_cycle_length")
-        .eq("id", ATHLETE_ID).single(),
+        .eq("id", athleteId).single(),
     ]);
 
   // Week sessions
   const sessionsRes = await sb.from("sessions").select("*")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .gte("scheduled_date", weekStart)
     .order("scheduled_date");
 
   // Recent session logs (last 20)
   const logsRes = await sb.from("session_logs").select("*")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .order("log_date", { ascending: false })
     .limit(20);
 
   // Today's scratch
   const scratchRes = await sb.from("session_scratch").select("*")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("scratch_date", today)
     .eq("scratch_status", "active")
     .maybeSingle();
@@ -65,7 +68,7 @@ export async function GET() {
   const ninetyDaysAgo = new Date();
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   const healthHistRes = await sb.from("health_metrics").select("*")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .gte("metric_date", ninetyDaysAgo.toISOString().split("T")[0])
     .order("metric_date");
 
@@ -79,7 +82,7 @@ export async function GET() {
   let healthDate = today;
   if (!health) {
     const fallbackRes = await sb.from("health_metrics")
-      .select("*").eq("athlete_id", ATHLETE_ID)
+      .select("*").eq("athlete_id", athleteId)
       .order("metric_date", { ascending: false })
       .limit(1).maybeSingle();
     health = fallbackRes.data;
@@ -114,12 +117,12 @@ export async function GET() {
     );
     const { count: done } = await sb.from("sessions")
       .select("*", { count: "exact", head: true })
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .eq("block_id", block.id)
       .eq("status", "completed");
     const { count: allSess } = await sb.from("sessions")
       .select("*", { count: "exact", head: true })
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .eq("block_id", block.id);
     blockSessionsCompleted = done ?? 0;
     blockSessionsTotal = allSess ?? 0;
@@ -133,7 +136,7 @@ export async function GET() {
     const { data: latestCycle } = await sb
       .from("cycle_logs")
       .select("period_start_date")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("period_start_date", { ascending: false })
       .limit(1)
       .maybeSingle();

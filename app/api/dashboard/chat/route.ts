@@ -1,8 +1,8 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 const tools: Anthropic.Tool[] = [
   {
@@ -53,7 +53,8 @@ async function executeTool(
   name: string,
   input: Record<string, unknown>,
   sb: ReturnType<typeof createServerClient>,
-  today: string
+  today: string,
+  athleteId: string
 ): Promise<unknown> {
   if (name === "log_note") {
     const note = input.note as string;
@@ -64,7 +65,7 @@ async function executeTool(
     const existing = await sb
       .from("session_scratch")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .eq("scratch_date", today)
       .eq("scratch_status", "active")
       .maybeSingle();
@@ -80,11 +81,11 @@ async function executeTool(
       const sessionRes = await sb
         .from("next_session")
         .select("session_label")
-        .eq("athlete_id", ATHLETE_ID)
+        .eq("athlete_id", athleteId)
         .maybeSingle();
       const label = sessionRes.data?.session_label || "Session";
       await sb.from("session_scratch").insert({
-        athlete_id: ATHLETE_ID,
+        athlete_id: athleteId,
         scratch_date: today,
         session_label: label,
         entries: [entry],
@@ -100,13 +101,13 @@ async function executeTool(
     await sb
       .from("sessions")
       .update({ status: "completed" })
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .eq("scheduled_date", today);
 
     const weekRes = await sb
       .from("weekly_state")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("week_start_date", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -127,7 +128,7 @@ async function executeTool(
       const existing = await sb
         .from("session_scratch")
         .select("*")
-        .eq("athlete_id", ATHLETE_ID)
+        .eq("athlete_id", athleteId)
         .eq("scratch_date", today)
         .eq("scratch_status", "active")
         .maybeSingle();
@@ -154,7 +155,7 @@ async function executeTool(
       .select(
         "metric_date,readiness_call,hrv_sdnn,sleep_total_h,resting_hr,ultrahuman_score"
       )
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .gte("metric_date", from.toISOString().split("T")[0])
       .order("metric_date");
     return { data: data || [] };
@@ -164,6 +165,9 @@ async function executeTool(
 }
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { message, context } = await req.json();
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -174,24 +178,24 @@ export async function POST(req: NextRequest) {
     sb
       .from("next_session")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .maybeSingle(),
     sb
       .from("sessions")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("scheduled_date")
       .limit(7),
     sb
       .from("health_metrics")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .eq("metric_date", today)
       .maybeSingle(),
     sb
       .from("training_blocks")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .eq("status", "active")
       .maybeSingle(),
   ]);
@@ -201,7 +205,7 @@ export async function POST(req: NextRequest) {
     const fallback = await sb
       .from("health_metrics")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("metric_date", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -213,7 +217,7 @@ export async function POST(req: NextRequest) {
   const block = blockRes.data;
 
   // Get athlete name
-  const { data: athleteInfo } = await sb.from("athletes").select("full_name, goals").eq("id", ATHLETE_ID).single();
+  const { data: athleteInfo } = await sb.from("athletes").select("full_name, goals").eq("id", athleteId).single();
   const athleteName = athleteInfo?.full_name || "your athlete";
   const athleteGoals = athleteInfo?.goals || "";
 
@@ -333,7 +337,7 @@ Your role:
           parsedTools.map(async (t) => ({
             type: "tool_result" as const,
             tool_use_id: t.id,
-            content: JSON.stringify(await executeTool(t.name, t.input, sb, today)),
+            content: JSON.stringify(await executeTool(t.name, t.input, sb, today, athleteId)),
           }))
         );
 

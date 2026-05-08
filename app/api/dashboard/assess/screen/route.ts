@@ -5,13 +5,13 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
 export const maxDuration = 120;
 
 const client = new Anthropic();
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
 const PROTOCOL_SUMMARY = `
 ## Postural Analysis Framework (CHEK/Janda/FMS/NASM/DNS)
@@ -48,6 +48,9 @@ Anterior/posterior views:
 `;
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json();
   const { photos, manualFindings } = body as {
     photos: Record<string, string>;
@@ -59,7 +62,7 @@ export async function POST(req: NextRequest) {
   const { data: athlete } = await sb
     .from("athletes")
     .select("full_name, goals, training_age_years, gym, coach_notes, goals_structured, onboarding_data")
-    .eq("id", ATHLETE_ID)
+    .eq("id", athleteId)
     .single();
 
   const athleteName = athlete?.full_name || "Athlete";

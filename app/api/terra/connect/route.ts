@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
 const TERRA_API_URL = "https://api.tryterra.co/v2/auth/generateWidgetSession";
 
@@ -26,6 +27,9 @@ const SUPPORTED_PROVIDERS = [
 ].join(",");
 
 export async function POST(req: NextRequest) {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json();
   // Use provided athlete_id or fall back to env var (single-user phase)
   const athlete_id = body.athlete_id || process.env.RAFN_ATHLETE_ID;

@@ -9,19 +9,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
 export const maxDuration = 60;
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 const client = new Anthropic();
 
 export async function GET() {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sb = createServerClient();
 
   const { data: block } = await sb
     .from("training_blocks")
     .select("id, name, planned_weeks, started_at, status")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("status", "active")
     .maybeSingle();
 
@@ -31,14 +34,14 @@ export async function GET() {
   const { count } = await sb
     .from("sessions")
     .select("*", { count: "exact", head: true })
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("block_id", block.id)
     .eq("status", "completed");
 
   const { count: total } = await sb
     .from("sessions")
     .select("*", { count: "exact", head: true })
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("block_id", block.id);
 
   // Block is "complete" if all planned weeks have passed or all sessions are done
@@ -51,7 +54,7 @@ export async function GET() {
   const { data: debrief } = await sb
     .from("program_debriefs")
     .select("content_md")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("debrief_type", "block_end")
     .eq("block_id", block.id)
     .maybeSingle();
@@ -67,13 +70,16 @@ export async function GET() {
 }
 
 export async function POST() {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sb = createServerClient();
 
   // Get current block
   const { data: block } = await sb
     .from("training_blocks")
     .select("*")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("status", "active")
     .maybeSingle();
 
@@ -85,7 +91,7 @@ export async function POST() {
   const { data: existing } = await sb
     .from("program_debriefs")
     .select("content_md")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("debrief_type", "block_end")
     .eq("block_id", block.id)
     .maybeSingle();
@@ -104,10 +110,10 @@ export async function POST() {
   // Gather block data
   const since = block.started_at;
   const [athleteRes, sessionsRes, logsRes, healthRes] = await Promise.all([
-    sb.from("athletes").select("full_name, goals").eq("id", ATHLETE_ID).single(),
-    sb.from("sessions").select("*").eq("athlete_id", ATHLETE_ID).eq("block_id", block.id).order("scheduled_date"),
-    sb.from("session_logs").select("*").eq("athlete_id", ATHLETE_ID).gte("log_date", since).order("log_date"),
-    sb.from("health_metrics").select("*").eq("athlete_id", ATHLETE_ID).gte("metric_date", since).order("metric_date"),
+    sb.from("athletes").select("full_name, goals").eq("id", athleteId).single(),
+    sb.from("sessions").select("*").eq("athlete_id", athleteId).eq("block_id", block.id).order("scheduled_date"),
+    sb.from("session_logs").select("*").eq("athlete_id", athleteId).gte("log_date", since).order("log_date"),
+    sb.from("health_metrics").select("*").eq("athlete_id", athleteId).gte("metric_date", since).order("metric_date"),
   ]);
 
   const athlete  = athleteRes.data;
@@ -182,7 +188,7 @@ If consistency was below 70%: lead with that. Name it. Address it before anythin
         }
         if (fullText.trim()) {
           await sb.from("program_debriefs").insert({
-            athlete_id:   ATHLETE_ID,
+            athlete_id:   athleteId,
             debrief_type: "block_end",
             block_id:     block.id,
             content_md:   fullText.trim(),

@@ -7,13 +7,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { getAthleteId } from "@/lib/get-athlete-id";
 
 export const maxDuration = 60;
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 const client = new Anthropic();
 
 export async function POST() {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sb = createServerClient();
 
   // Gather the past 14 days of data
@@ -24,21 +27,21 @@ export async function POST() {
   const [athleteRes, logsRes, healthRes, movementRes] = await Promise.all([
     sb.from("athletes")
       .select("full_name, onboarding_data, training_schedule, movement_results, goals")
-      .eq("id", ATHLETE_ID)
+      .eq("id", athleteId)
       .single(),
     sb.from("session_logs")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .gte("log_date", since)
       .order("log_date"),
     sb.from("health_metrics")
       .select("*")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .gte("metric_date", since)
       .order("metric_date"),
     sb.from("assessments")
       .select("dominant_pattern, shoulder_finding, full_notes_md")
-      .eq("athlete_id", ATHLETE_ID)
+      .eq("athlete_id", athleteId)
       .order("assessment_date", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -106,7 +109,7 @@ Keep it under 300 words. No bullet lists — prose.`;
   const { data: existingDebrief } = await sb
     .from("program_debriefs")
     .select("content_md")
-    .eq("athlete_id", ATHLETE_ID)
+    .eq("athlete_id", athleteId)
     .eq("debrief_type", "foundation")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -145,7 +148,7 @@ Keep it under 300 words. No bullet lists — prose.`;
         // Save the debrief after streaming completes
         if (fullText.trim()) {
           await sb.from("program_debriefs").insert({
-            athlete_id:   ATHLETE_ID,
+            athlete_id:   athleteId,
             debrief_type: "foundation",
             content_md:   fullText.trim(),
           });
@@ -162,12 +165,15 @@ Keep it under 300 words. No bullet lists — prose.`;
 }
 
 export async function GET() {
+  const athleteId = await getAthleteId();
+  if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   // Check if Foundation Week is complete (7+ days since onboarding)
   const sb = createServerClient();
   const { data } = await sb
     .from("athletes")
     .select("onboarding_complete, onboarding_completed_at")
-    .eq("id", ATHLETE_ID)
+    .eq("id", athleteId)
     .single();
 
   if (!data?.onboarding_complete || !data?.onboarding_completed_at) {
