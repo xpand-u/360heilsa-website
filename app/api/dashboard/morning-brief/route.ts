@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase-server";
+import { computeCyclePhase } from "@/app/api/cycle/log/route";
 
 const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
@@ -9,8 +10,13 @@ export async function POST(_req: NextRequest) {
   const sb = createServerClient();
   const today = new Date().toISOString().split("T")[0];
 
-  const [sessionRes, healthRes, blockRes, weekRes, limitRes] =
+  const [athleteRes, sessionRes, healthRes, blockRes, weekRes, limitRes] =
     await Promise.all([
+      sb
+        .from("athletes")
+        .select("full_name, goals, training_schedule, onboarding_data, tracks_cycle, avg_cycle_length")
+        .eq("id", ATHLETE_ID)
+        .single(),
       sb
         .from("next_session")
         .select("*")
@@ -67,11 +73,49 @@ export async function POST(_req: NextRequest) {
     .gte("metric_date", sevenAgo.toISOString().split("T")[0])
     .order("metric_date");
 
+  const athlete = athleteRes.data;
   const session = sessionRes.data;
   const block = blockRes.data;
   const week = weekRes.data;
   const limitations = limitRes.data || [];
   const trend = trendRes.data || [];
+
+  // Cycle phase (only if athlete tracks cycle)
+  let cycleContext = "";
+  if (athlete?.tracks_cycle) {
+    const { data: cycleLog } = await sb
+      .from("cycle_logs")
+      .select("period_start_date, cycle_length_est")
+      .eq("athlete_id", ATHLETE_ID)
+      .order("period_start_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (cycleLog?.period_start_date) {
+      const phase = computeCyclePhase(
+        cycleLog.period_start_date,
+        athlete.avg_cycle_length || 28
+      );
+      cycleContext = `\nCYCLE PHASE: ${phase.label} (Day ${phase.day}) — ${phase.trainingNote}`;
+    }
+  }
+
+  // Recent PRs (last 3 days)
+  const threeDaysAgo = new Date();
+  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+  const { data: recentLogs } = await sb
+    .from("session_logs")
+    .select("top_sets, log_date")
+    .eq("athlete_id", ATHLETE_ID)
+    .gte("log_date", threeDaysAgo.toISOString().split("T")[0])
+    .order("log_date", { ascending: false })
+    .limit(3);
+
+  // We can't run PR detection here without the full history — just surface recent top sets
+  const recentTopSets = (recentLogs || []).flatMap(l =>
+    (l.top_sets || []).filter((s: any) => s.load_kg && s.exercise)
+      .map((s: any) => `${s.exercise} ${s.load_kg}kg ${s.sets || "?"}×${s.reps || "?"}`)
+  ).slice(0, 4).join(", ");
 
   const weekNum = block
     ? Math.max(
@@ -83,7 +127,20 @@ export async function POST(_req: NextRequest) {
       )
     : null;
 
-  const prompt = `Generate a concise morning training brief for Rafn (${today}).
+  const athleteName = athlete?.full_name || "Athlete";
+  const athleteGoals = athlete?.goals || athlete?.onboarding_data?.goals || "Not specified";
+  const trainingSchedule = athlete?.training_schedule
+    ? `Training days: ${Object.entries(athlete.training_schedule as Record<string, { type: string; time?: string }>)
+        .filter(([, v]) => v?.type)
+        .map(([day, v]) => `${day} (${v.type}${v.time ? ` @ ${v.time}` : ""})`)
+        .join(", ")}`
+    : "Schedule not set";
+
+  const prompt = `Generate a concise morning training brief for ${athleteName} (${today}).
+
+ATHLETE PROFILE:
+- Goals: ${athleteGoals}
+- ${trainingSchedule}
 
 READINESS${healthDate !== today ? ` (from ${healthDate})` : ""}:
 - Status: ${health?.readiness_call || "unknown"}
@@ -102,14 +159,16 @@ ${session ? `${session.session_label} (${session.session_type})\n${session.conte
 BLOCK: ${block ? `${block.name}, vika ${weekNum} af ${block.planned_weeks}` : "None"}
 WEEK: ${week ? `${week.sessions_completed}/${week.sessions_planned} lokið` : "No data"}
 ACTIVE LIMITATIONS: ${limitations.length > 0 ? limitations.map((l: any) => `${l.limitation_type}: ${l.status}`).join(", ") : "None"}
+${cycleContext}${recentTopSets ? `\nRECENT TRAINING (last 3 days): ${recentTopSets}` : ""}
 
 Write a focused morning brief (4–6 bullet points). Include:
 1. Go / modify / rest call — be decisive based on readiness + trend
 2. Specific load guidance if modifying (e.g. "cut working sets by 1, drop intensity by 10%")
 3. Key focus cues for the session (1-2 technical priorities)
-4. Any flags: shoulder risk, deload proximity, sleep debt
+4. Any flags: shoulder risk, deload proximity, sleep debt${cycleContext ? ", cycle phase considerations" : ""}
 5. One sharp motivational line at the end
 
+${cycleContext ? "If in late luteal or menstrual phase: weave that context naturally into the readiness call — don't make it awkward, just factor it in." : ""}
 No fluff. Direct. All in English.`;
 
   const stream = client.messages.stream({

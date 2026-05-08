@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
+import { computeCyclePhase } from "@/app/api/cycle/log/route";
 
 const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
 
@@ -26,7 +27,7 @@ export async function GET() {
   monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
   const weekStart = monday.toISOString().split("T")[0];
 
-  const [nextSessionRes, weeklyStateRes, healthRes, blockRes, limitationsRes] =
+  const [nextSessionRes, weeklyStateRes, healthRes, blockRes, limitationsRes, athleteRes] =
     await Promise.all([
       sb.from("next_session").select("*").eq("athlete_id", ATHLETE_ID).maybeSingle(),
       sb.from("weekly_state").select("*").eq("athlete_id", ATHLETE_ID)
@@ -37,6 +38,8 @@ export async function GET() {
         .eq("status", "active").maybeSingle(),
       sb.from("limitations").select("*").eq("athlete_id", ATHLETE_ID)
         .neq("status", "resolved"),
+      sb.from("athletes").select("full_name, goals, onboarding_complete, onboarding_completed_at, tracks_cycle, avg_cycle_length")
+        .eq("id", ATHLETE_ID).single(),
     ]);
 
   // Week sessions
@@ -45,11 +48,11 @@ export async function GET() {
     .gte("scheduled_date", weekStart)
     .order("scheduled_date");
 
-  // Recent session logs (last 10)
+  // Recent session logs (last 20)
   const logsRes = await sb.from("session_logs").select("*")
     .eq("athlete_id", ATHLETE_ID)
     .order("log_date", { ascending: false })
-    .limit(10);
+    .limit(20);
 
   // Today's scratch
   const scratchRes = await sb.from("session_scratch").select("*")
@@ -58,17 +61,18 @@ export async function GET() {
     .eq("scratch_status", "active")
     .maybeSingle();
 
-  // Health metrics last 30 days
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // Health metrics last 90 days
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   const healthHistRes = await sb.from("health_metrics").select("*")
     .eq("athlete_id", ATHLETE_ID)
-    .gte("metric_date", thirtyDaysAgo.toISOString().split("T")[0])
+    .gte("metric_date", ninetyDaysAgo.toISOString().split("T")[0])
     .order("metric_date");
 
-  const session = nextSessionRes.data;
-  const week = weeklyStateRes.data;
-  const block = blockRes.data;
+  const session  = nextSessionRes.data;
+  const week     = weeklyStateRes.data;
+  const block    = blockRes.data;
+  const athlete  = athleteRes.data;
 
   // If no health data for today, fall back to most recent row
   let health = healthRes.data;
@@ -89,14 +93,58 @@ export async function GET() {
 
   // Compute insights from health history
   const sleepRecs = healthHistory.filter((r) => r.sleep_total_h);
-  const rhrRecs = healthHistory.filter((r) => r.resting_hr);
-  const hrvRecs = healthHistory.filter((r) => r.hrv_sdnn);
+  const rhrRecs   = healthHistory.filter((r) => r.resting_hr);
+  const hrvRecs   = healthHistory.filter((r) => r.hrv_sdnn);
+  const stepRecs  = healthHistory.filter((r) => r.steps);
 
   const avg = (arr: number[]) =>
     arr.length ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : 0;
 
-  const sleep7d = avg(sleepRecs.slice(-7).map((r) => r.sleep_total_h));
+  const sleep7d  = avg(sleepRecs.slice(-7).map((r) => r.sleep_total_h));
   const sleep30d = avg(sleepRecs.map((r) => r.sleep_total_h));
+  const steps7d  = Math.round(avg(stepRecs.slice(-7).map((r) => r.steps)));
+
+  // Block completion check
+  let blockComplete = false;
+  let blockSessionsCompleted = 0;
+  let blockSessionsTotal = 0;
+  if (block) {
+    const weeksPassed = Math.floor(
+      (Date.now() - new Date(block.started_at).getTime()) / (1000 * 60 * 60 * 24 * 7)
+    );
+    const { count: done } = await sb.from("sessions")
+      .select("*", { count: "exact", head: true })
+      .eq("athlete_id", ATHLETE_ID)
+      .eq("block_id", block.id)
+      .eq("status", "completed");
+    const { count: allSess } = await sb.from("sessions")
+      .select("*", { count: "exact", head: true })
+      .eq("athlete_id", ATHLETE_ID)
+      .eq("block_id", block.id);
+    blockSessionsCompleted = done ?? 0;
+    blockSessionsTotal = allSess ?? 0;
+    blockComplete = weeksPassed >= block.planned_weeks ||
+      (blockSessionsTotal > 0 && blockSessionsCompleted >= blockSessionsTotal);
+  }
+
+  // Cycle phase
+  let cyclePhase = null;
+  if (athlete?.tracks_cycle) {
+    const { data: latestCycle } = await sb
+      .from("cycle_logs")
+      .select("period_start_date")
+      .eq("athlete_id", ATHLETE_ID)
+      .order("period_start_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestCycle?.period_start_date) {
+      cyclePhase = computeCyclePhase(
+        latestCycle.period_start_date,
+        athlete.avg_cycle_length || 28
+      );
+    }
+  }
 
   return NextResponse.json({
     today,
@@ -109,11 +157,21 @@ export async function GET() {
     weekSessions,
     health,
     healthHistory,
+    athlete: {
+      fullName: athlete?.full_name,
+      goals:    athlete?.goals,
+      onboardingComplete: athlete?.onboarding_complete,
+      tracksCycle: athlete?.tracks_cycle || false,
+      cyclePhase,
+    },
     block: block
       ? {
           ...block,
           week: blockWeek(block.started_at),
           deloadDays: daysUntil(block.deload_due),
+          blockComplete,
+          blockSessionsCompleted,
+          blockSessionsTotal,
         }
       : null,
     limitations,
@@ -122,6 +180,7 @@ export async function GET() {
     insights: {
       sleep7d,
       sleep30d,
+      steps7d,
       currentRhr: rhrRecs.length ? rhrRecs[rhrRecs.length - 1].resting_hr : null,
       avgRhr30d: avg(rhrRecs.map((r) => r.resting_hr)),
       currentHrv: hrvRecs.length ? hrvRecs[hrvRecs.length - 1].hrv_sdnn : null,
@@ -130,6 +189,8 @@ export async function GET() {
       sleepTotals: sleepRecs.map((r) => r.sleep_total_h),
       rhrLabels: rhrRecs.map((r) => r.metric_date.slice(5)),
       rhrValues: rhrRecs.map((r) => r.resting_hr),
+      stepLabels: stepRecs.map((r) => r.metric_date.slice(5)),
+      stepValues: stepRecs.map((r) => r.steps),
     },
   });
 }

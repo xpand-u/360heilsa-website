@@ -66,9 +66,12 @@ function SettingsContent() {
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [connectErr, setConnectErr]     = useState<string | null>(null);
   const [banner, setBanner]             = useState(justConnected ? "Wearable connected successfully." : null);
+  const [calendarToken, setCalendarToken] = useState<string | null>(null);
+  const [calendarCopied, setCalendarCopied] = useState(false);
 
   useEffect(() => {
     fetchConnections();
+    fetchCalendarToken();
   }, []);
 
   useEffect(() => {
@@ -84,6 +87,31 @@ function SettingsContent() {
     const d = await res.json();
     setConnections(d.connections || []);
     setLoadingConns(false);
+  }
+
+  async function fetchCalendarToken() {
+    const res = await fetch("/api/onboarding/status");
+    const d = await res.json();
+    if (d.calendar_token) setCalendarToken(d.calendar_token);
+  }
+
+  function getCalendarUrl() {
+    if (!calendarToken) return null;
+    const host = window.location.host;
+    return `webcal://${host}/api/calendar/feed?token=${calendarToken}`;
+  }
+
+  async function copyCalendarLink() {
+    const url = getCalendarUrl();
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    setCalendarCopied(true);
+    setTimeout(() => setCalendarCopied(false), 2000);
+  }
+
+  function openCalendar() {
+    const url = getCalendarUrl();
+    if (url) window.location.href = url;
   }
 
   async function connect() {
@@ -254,6 +282,51 @@ function SettingsContent() {
             </div>
           </Card>
         </div>
+
+        {/* ── Training calendar ── */}
+        {calendarToken && (
+          <div style={{ marginBottom: "32px" }}>
+            <Label>Training Calendar</Label>
+            <Card>
+              <CardHeader
+                title="Calendar Sync"
+                subtitle="Your training schedule, always up to date."
+              />
+              <div style={{ padding: "16px 20px" }}>
+                <p style={{ fontSize: "13px", color: T.muted, marginBottom: "16px", lineHeight: 1.5 }}>
+                  Tap the button below to subscribe to your training calendar. Sessions auto-appear and stay in sync — no manual updates needed.
+                </p>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <button
+                    onClick={openCalendar}
+                    style={{
+                      background: T.accentDim, border: `1px solid ${T.accent}`,
+                      borderRadius: "10px", color: T.accent, cursor: "pointer",
+                      fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem",
+                      letterSpacing: "0.08em", padding: "10px 24px",
+                    }}
+                  >
+                    SUBSCRIBE TO CALENDAR
+                  </button>
+                  <button
+                    onClick={copyCalendarLink}
+                    style={{
+                      background: "none", border: `1px solid ${T.border}`,
+                      borderRadius: "10px", color: calendarCopied ? T.green : T.muted,
+                      cursor: "pointer", fontSize: "11px",
+                      fontWeight: 600, letterSpacing: "0.06em", padding: "10px 16px",
+                    }}
+                  >
+                    {calendarCopied ? "✓ COPIED" : "COPY LINK"}
+                  </button>
+                </div>
+                <p style={{ fontSize: "11px", color: T.muted, marginTop: "10px", lineHeight: 1.5 }}>
+                  Works with Apple Calendar · Google Calendar · Outlook · any ICS-compatible app
+                </p>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* ── How it works ── */}
         <div style={{ marginBottom: "32px" }}>

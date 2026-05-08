@@ -212,7 +212,12 @@ export async function POST(req: NextRequest) {
   const weekSessions = weekRes.data || [];
   const block = blockRes.data;
 
-  const systemPrompt = `You are 360 Heilsa Coach — Rafn Franklin's personal AI fitness coach. You are direct, knowledgeable, and opinionated. You adapt training based on recovery data and push back when needed.
+  // Get athlete name
+  const { data: athleteInfo } = await sb.from("athletes").select("full_name, goals").eq("id", ATHLETE_ID).single();
+  const athleteName = athleteInfo?.full_name || "your athlete";
+  const athleteGoals = athleteInfo?.goals || "";
+
+  const systemPrompt = `You are 360 Heilsa Coach — ${athleteName}'s personal AI fitness coach. You are direct, knowledgeable, and opinionated. You adapt training based on recovery data and push back when needed.
 
 Current date: ${today}
 
@@ -240,7 +245,7 @@ ${
 - Resting HR: ${health.resting_hr ?? "—"}bpm
 - Ultrahuman: ${health.ultrahuman_score ?? "—"}
 - Notes: ${health.notes || "none"}`
-    : "No readiness data for today. Ask Rafn for subjective readiness."
+    : `No readiness data for today. Ask ${athleteName} for subjective readiness.`
 }
 
 CURRENT BLOCK:
