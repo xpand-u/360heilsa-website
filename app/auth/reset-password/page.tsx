@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase-browser";
 
 const T = {
   bg: "#0c0c0b", surface: "#141413", border: "#222220",
@@ -24,13 +25,9 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/auth/update-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed to update password"); return; }
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) { setError(error.message); return; }
       setDone(true);
       setTimeout(() => router.push("/dashboard"), 2000);
     } catch {
@@ -50,9 +47,7 @@ export default function ResetPasswordPage() {
           fontFamily: "'BebasNeue', sans-serif", fontSize: "clamp(28px, 6vw, 36px)",
           color: T.accent, letterSpacing: "0.08em", marginBottom: "8px",
         }}>360 HEILSA</p>
-        <p style={{ fontSize: "14px", color: T.muted, marginBottom: "32px" }}>
-          Set a new password
-        </p>
+        <p style={{ fontSize: "14px", color: T.muted, marginBottom: "32px" }}>Set a new password</p>
 
         {done ? (
           <div style={{ fontSize: "14px", color: T.green, textAlign: "center" }}>
@@ -100,7 +95,7 @@ export default function ResetPasswordPage() {
                 }}
               />
               {confirm && confirm !== password && (
-                <p style={{ fontSize: "12px", color: T.red, marginTop: "6px" }}>Passwords don't match</p>
+                <p style={{ fontSize: "12px", color: T.red, marginTop: "6px" }}>Passwords don&apos;t match</p>
               )}
             </div>
 
@@ -119,7 +114,7 @@ export default function ResetPasswordPage() {
                 transition: "background 0.15s", marginTop: "8px",
               }}
             >
-              {loading ? "..." : "SET PASSWORD"}
+              {loading ? "…" : "SET PASSWORD"}
             </button>
           </form>
         )}
