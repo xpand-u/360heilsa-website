@@ -14,16 +14,21 @@ export async function getAthleteId(): Promise<string | null> {
   const cookieStore = await cookies();
   const sessionClient = createSessionClient(cookieStore);
 
-  const { data: { user }, error } = await sessionClient.auth.getUser();
-  if (error || !user) return null;
+  const { data: { user }, error: authError } = await sessionClient.auth.getUser();
+  if (authError || !user) return null;
 
   // Look up athlete record by Supabase auth user_id
   const adminClient = createServerClient(); // service role — bypasses RLS
-  const { data } = await adminClient
+  const { data, error: athleteError } = await adminClient
     .from("athletes")
     .select("id")
     .eq("user_id", user.id)
     .single();
+
+  if (athleteError && athleteError.code !== "PGRST116") {
+    // PGRST116 = "no rows" — expected for new users; anything else is a real error
+    console.error("[getAthleteId] athlete lookup failed:", athleteError.message);
+  }
 
   return data?.id ?? null;
 }
@@ -35,6 +40,7 @@ export async function getAthleteId(): Promise<string | null> {
 export async function getAuthUser() {
   const cookieStore = await cookies();
   const sessionClient = createSessionClient(cookieStore);
-  const { data: { user } } = await sessionClient.auth.getUser();
+  const { data: { user }, error } = await sessionClient.auth.getUser();
+  if (error) return null;
   return user ?? null;
 }

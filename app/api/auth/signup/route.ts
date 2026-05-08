@@ -55,7 +55,10 @@ export async function POST(req: NextRequest) {
 
   if (athleteError || !athlete) {
     // Roll back auth user if athlete creation fails
-    await adminClient.auth.admin.deleteUser(authUserId);
+    const { error: deleteError } = await adminClient.auth.admin.deleteUser(authUserId);
+    if (deleteError) {
+      console.error("[signup] Failed to roll back auth user after athlete insert failure:", deleteError.message);
+    }
     return NextResponse.json({ error: "Failed to create athlete profile" }, { status: 500 });
   }
 
