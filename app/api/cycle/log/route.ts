@@ -114,5 +114,37 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Auto-compute avg_cycle_length from prior period gaps (need at least 2 prior logs)
+  const { data: priorLogs } = await sb
+    .from("cycle_logs")
+    .select("period_start_date")
+    .eq("athlete_id", ATHLETE_ID)
+    .neq("period_start_date", period_start_date)
+    .order("period_start_date", { ascending: false })
+    .limit(4);
+
+  if (priorLogs && priorLogs.length >= 1) {
+    // Combine new entry with prior logs to compute gaps
+    const allDates = [period_start_date, ...priorLogs.map(l => l.period_start_date)]
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    const gaps: number[] = [];
+    for (let i = 0; i < allDates.length - 1; i++) {
+      const gap = Math.round(
+        (new Date(allDates[i]).getTime() - new Date(allDates[i + 1]).getTime()) /
+        (1000 * 60 * 60 * 24)
+      );
+      // Only include physiologically plausible gaps (21–45 days)
+      if (gap >= 21 && gap <= 45) gaps.push(gap);
+    }
+
+    if (gaps.length >= 1) {
+      const newAvg = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
+      await sb.from("athletes")
+        .update({ avg_cycle_length: newAvg })
+        .eq("id", ATHLETE_ID);
+    }
+  }
+
   return NextResponse.json({ ok: true, log: data });
 }

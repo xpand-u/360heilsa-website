@@ -107,9 +107,11 @@ function SessionPlanRenderer({ content, onExerciseTap }: { content: string; onEx
             </div>
           );
         }
-        // Exercise line — contains em-dash separator
-        if (line.includes("—") && !line.startsWith("#") && !line.startsWith("*")) {
-          const dashIdx    = line.indexOf("—");
+        // Exercise line — contains em-dash, en-dash, or spaced hyphen separator
+        const hasDash = line.includes("—") || line.includes("–") || / - /.test(line);
+        if (hasDash && !line.startsWith("#") && !line.startsWith("*")) {
+          const dashMatch = line.match(/—|–| - /);
+          const dashIdx   = dashMatch ? line.indexOf(dashMatch[0]) : -1;
           const exerciseName = line.slice(0, dashIdx).trim();
           const rest       = line.slice(dashIdx);
           return (
@@ -865,13 +867,32 @@ export default function DashboardClient() {
   const healthIsStale  = healthDate && healthDate !== today;
   const blockIsComplete = block?.blockComplete === true;
 
-  // Serve readiness-appropriate session content
+  // Serve readiness-appropriate session content, with cycle phase override
   function getSessionContent(s: any): string {
     if (!s) return "";
-    if (readiness === "red"    && s.content_red_md)    return s.content_red_md;
+    if (readiness === "red" && s.content_red_md) return s.content_red_md;
     if (readiness === "yellow" && s.content_yellow_md) return s.content_yellow_md;
+    // Cycle phase override: late luteal or menstrual → serve modified variant even on green
+    const cyclePhase = data.athlete?.cyclePhase?.phase;
+    if (
+      readiness !== "red" &&
+      (cyclePhase === "late_luteal" || cyclePhase === "menstrual") &&
+      s.content_yellow_md
+    ) {
+      return s.content_yellow_md;
+    }
     return s.content_md || "";
   }
+
+  // Whether the session is cycle-adjusted (for badge display)
+  const isCycleAdjusted = (() => {
+    const cyclePhase = data.athlete?.cyclePhase?.phase;
+    return (
+      readiness !== "red" &&
+      readiness !== "yellow" &&
+      (cyclePhase === "late_luteal" || cyclePhase === "menstrual")
+    );
+  })();
 
   const healthHistory: any[] = data.healthHistory || [];
   const hrvValues   = healthHistory.map((r: any) => r.hrv_sdnn).filter(Boolean);
@@ -1256,6 +1277,9 @@ export default function DashboardClient() {
                           )}
                           {(readiness === "red" && session.content_red_md) && (
                             <span style={{ fontSize: "9px", padding: "1px 6px", borderRadius: "4px", background: T.red + "20", color: T.red, fontWeight: 600, letterSpacing: "0.06em" }}>RECOVERY</span>
+                          )}
+                          {isCycleAdjusted && session.content_yellow_md && (
+                            <span style={{ fontSize: "9px", padding: "1px 6px", borderRadius: "4px", background: "#9b59b620", color: "#9b59b6", fontWeight: 600, letterSpacing: "0.06em" }}>CYCLE ADJUSTED</span>
                           )}
                         </div>
                         <div style={{
