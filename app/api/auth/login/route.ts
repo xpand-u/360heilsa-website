@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
   });
 
   if (error || !data.session) {
-    return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+    // Return the real Supabase error message to help diagnose issues (e.g. "Email not confirmed")
+    return NextResponse.json({ error: error?.message ?? "Invalid email or password" }, { status: 401 });
   }
 
   const response = NextResponse.json({ ok: true });
