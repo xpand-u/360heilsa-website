@@ -616,26 +616,10 @@ export default function OnboardingClient() {
 
           {/* Hero */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 24px 24px" }}>
-            {/* CF monogram */}
-            <div style={{
-              width: "72px", height: "72px", borderRadius: "50%",
-              background: T.accent, display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: "22px", color: T.bg,
-              fontWeight: 700, fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.04em",
-              marginBottom: "24px",
-            }}>CF</div>
-
-            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "40px", width: "auto", filter: "brightness(0) invert(1)", display: "block", marginBottom: "8px" }} />
-            <h1 style={{
-              fontFamily: "'BebasNeue', sans-serif", fontSize: "clamp(24px, 6vw, 32px)",
-              letterSpacing: "0.06em", color: T.muted, margin: "0 0 28px",
-              lineHeight: 1,
-            }}>
-              COACH FRANKLIN
-            </h1>
+            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "44px", width: "auto", filter: "brightness(0) invert(1)", display: "block", marginBottom: "28px" }} />
 
             <p style={{ fontSize: "18px", lineHeight: 1.55, fontWeight: 300, margin: "0 0 16px", color: T.text }}>
-              I&apos;m not a generic fitness app.
+              I&apos;m Coach Franklin — your coach. And I&apos;m not a generic fitness app.
             </p>
             <p style={{ fontSize: "14px", lineHeight: 1.8, color: T.muted, margin: 0 }}>
               I build a system around how{" "}
@@ -713,7 +697,7 @@ export default function OnboardingClient() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <p style={{ fontSize: "20px", lineHeight: 1.5, fontWeight: 300, margin: 0, color: T.text }}>
-              I&apos;m not a generic fitness app.
+              I&apos;m Coach Franklin — your coach. And I&apos;m not a generic fitness app.
             </p>
             <p style={{ fontSize: "15px", lineHeight: 1.8, color: T.muted, margin: 0 }}>
               I don&apos;t hand you a 12-week program and wish you luck. I build a system around
