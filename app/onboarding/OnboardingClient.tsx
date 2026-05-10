@@ -619,7 +619,7 @@ export default function OnboardingClient() {
             <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "44px", width: "auto", filter: "brightness(0) invert(1)", display: "block", marginBottom: "28px" }} />
 
             <p style={{ fontSize: "18px", lineHeight: 1.55, fontWeight: 300, margin: "0 0 16px", color: T.text }}>
-              I&apos;m Coach Franklin — your coach. And I&apos;m not a generic fitness app.
+              I&apos;m Coach Franklin. Most coaches give you a program. I build a system around you.
             </p>
             <p style={{ fontSize: "14px", lineHeight: 1.8, color: T.muted, margin: 0 }}>
               I build a system around how{" "}
@@ -697,7 +697,7 @@ export default function OnboardingClient() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <p style={{ fontSize: "20px", lineHeight: 1.5, fontWeight: 300, margin: 0, color: T.text }}>
-              I&apos;m Coach Franklin — your coach. And I&apos;m not a generic fitness app.
+              I&apos;m Coach Franklin. Most coaches give you a program. I build a system around you.
             </p>
             <p style={{ fontSize: "15px", lineHeight: 1.8, color: T.muted, margin: 0 }}>
               I don&apos;t hand you a 12-week program and wish you luck. I build a system around
