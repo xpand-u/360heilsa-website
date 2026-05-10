@@ -6,10 +6,12 @@ import Coach360 from "@/components/Coach360";
 import Podcast from "@/components/Podcast";
 import WayOfLife from "@/components/WayOfLife";
 import Footer from "@/components/Footer";
+import AuthHashRedirect from "@/components/AuthHashRedirect";
 
 export default function Home() {
   return (
     <main>
+      <AuthHashRedirect />
       <Nav />
       <Hero />
       <About />
