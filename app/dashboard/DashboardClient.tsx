@@ -998,9 +998,7 @@ export default function DashboardClient() {
       {!isMobile && (
         <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: "52px", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
-            <span style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.4rem", letterSpacing: "0.08em", color: T.accent }}>
-              360 HEILSA
-            </span>
+            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "28px", width: "auto", filter: "brightness(0) invert(1)", display: "block" }} />
             <div style={{ display: "flex", gap: "2px" }}>
               {([["today", "TODAY"], ["program", "PROGRAM"], ["history", "HISTORY"], ["running", "RUNNING"], ["assessment", "ASSESSMENT"], ["nutrition", "NUTRITION"]] as [NavItem, string][]).map(([id, label]) => (
                 <button key={id} onClick={() => setNav(id)} style={{
@@ -1062,9 +1060,7 @@ export default function DashboardClient() {
       {/* ── MOBILE TOP BAR ── */}
       {isMobile && (
         <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: "52px", flexShrink: 0 }}>
-          <span style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.3rem", letterSpacing: "0.08em", color: T.accent }}>
-            360 HEILSA
-          </span>
+          <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "26px", width: "auto", filter: "brightness(0) invert(1)", display: "block" }} />
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <button onClick={fetchData} disabled={refreshing} style={{
               background: "none", border: `1px solid ${T.border}`, borderRadius: "6px",

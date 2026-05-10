@@ -611,9 +611,7 @@ export default function OnboardingClient() {
         }}>
           {/* Top brand bar */}
           <div style={{ padding: "24px 24px 0" }}>
-            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "13px", letterSpacing: "0.2em", color: T.muted }}>
-              360 HEILSA
-            </div>
+            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "22px", width: "auto", filter: "brightness(0) invert(1)", opacity: 0.5, display: "block" }} />
           </div>
 
           {/* Hero */}
@@ -627,16 +625,14 @@ export default function OnboardingClient() {
               marginBottom: "24px",
             }}>CF</div>
 
+            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "40px", width: "auto", filter: "brightness(0) invert(1)", display: "block", marginBottom: "8px" }} />
             <h1 style={{
-              fontFamily: "'BebasNeue', sans-serif", fontSize: "clamp(36px, 9vw, 52px)",
-              letterSpacing: "0.06em", color: T.text, margin: "0 0 8px",
+              fontFamily: "'BebasNeue', sans-serif", fontSize: "clamp(24px, 6vw, 32px)",
+              letterSpacing: "0.06em", color: T.muted, margin: "0 0 28px",
               lineHeight: 1,
             }}>
               COACH FRANKLIN
             </h1>
-            <p style={{ fontSize: "14px", color: T.muted, margin: "0 0 28px", lineHeight: 1.5 }}>
-              Elite Performance System
-            </p>
 
             <p style={{ fontSize: "18px", lineHeight: 1.55, fontWeight: 300, margin: "0 0 16px", color: T.text }}>
               I&apos;m not a generic fitness app.
@@ -709,18 +705,10 @@ export default function OnboardingClient() {
     return (
       <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
         <div style={{ ...desktopCard, display: "flex", flexDirection: "column", padding: "48px 40px", gap: "32px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <div style={{
-              width: "56px", height: "56px", borderRadius: "50%",
-              background: T.accent, display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: "18px", color: T.bg,
-              fontWeight: 700, fontFamily: "'BebasNeue', sans-serif", letterSpacing: "0.04em", flexShrink: 0,
-            }}>CF</div>
-            <div>
-              <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.4rem", letterSpacing: "0.08em", color: T.accent }}>
-                COACH FRANKLIN
-              </div>
-              <div style={{ fontSize: "12px", color: T.muted }}>Elite Performance System</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "36px", width: "auto", filter: "brightness(0) invert(1)", display: "block" }} />
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em", color: T.muted }}>
+              COACH FRANKLIN — Elite Performance System
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>

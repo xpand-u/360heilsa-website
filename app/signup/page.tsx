@@ -84,15 +84,7 @@ export default function SignupPage() {
     >
       <div style={{ width: "100%", maxWidth: "400px" }}>
         <div style={{ marginBottom: "40px" }}>
-          <p style={{
-            fontFamily: "'BebasNeue', sans-serif",
-            fontSize: "clamp(28px, 6vw, 36px)",
-            color: T.accent,
-            letterSpacing: "0.08em",
-            marginBottom: "8px",
-          }}>
-            360 HEILSA
-          </p>
+          <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "36px", width: "auto", filter: "brightness(0) invert(1)", display: "block", marginBottom: "8px" }} />
           <p style={{ fontSize: "14px", color: T.muted }}>
             Stofnaðu aðgang
           </p>
