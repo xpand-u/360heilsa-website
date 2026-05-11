@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   }
 
   const schedule = athlete.training_schedule as {
-    days: { day: string; type: string; time: string }[];
+    days: { day: string; type: string; time: string; duration?: number }[];
   } | null;
 
   const events: string[] = [];
@@ -65,19 +65,27 @@ export async function GET(req: NextRequest) {
       const dayNum = DAY_NAMES[slot.day.toLowerCase()];
       if (dayNum === undefined) continue;
 
-      const timeHour = slot.time === "morning" ? 7
-                     : slot.time === "afternoon" ? 12
-                     : 18; // evening
+      // Parse "HH:MM" time string; fall back to legacy preset labels
+      let timeHour = 7;
+      let timeMin = 0;
+      if (/^\d{1,2}:\d{2}$/.test(slot.time || "")) {
+        const [h, m] = slot.time.split(":").map(Number);
+        timeHour = h;
+        timeMin = m;
+      } else {
+        timeHour = slot.time === "afternoon" ? 12 : slot.time === "evening" ? 18 : 7;
+      }
 
       for (let week = 0; week < 8; week++) {
         const base = new Date(now);
         base.setDate(base.getDate() + week * 7);
         const occurrence = nextOccurrence(dayNum, week === 0 ? now : base);
 
+        const durationMins = slot.duration || 90;
         const start = new Date(occurrence);
-        start.setHours(timeHour, 0, 0, 0);
+        start.setHours(timeHour, timeMin, 0, 0);
         const end = new Date(start);
-        end.setHours(timeHour + 1, 30, 0, 0); // 90-min default
+        end.setTime(start.getTime() + durationMins * 60 * 1000);
 
         const uid = `${uid_base}-${slot.day}-w${week}@coachfranklin`;
         const label = SESSION_LABELS[slot.type] || "Training Session";
@@ -88,7 +96,7 @@ export async function GET(req: NextRequest) {
           `DTSTART:${formatICSDate(start)}`,
           `DTEND:${formatICSDate(end)}`,
           `SUMMARY:🏋️ ${label}`,
-          `DESCRIPTION:Coach Franklin — ${label}`,
+          `DESCRIPTION:Coach Franklin — ${label}\\nTo reschedule\\, open the 360 Health app. Changes made here won't sync back.`,
           `LOCATION:`,
           "END:VEVENT",
         ].join("\r\n"));

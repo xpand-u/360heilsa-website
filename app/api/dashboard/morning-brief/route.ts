@@ -17,7 +17,7 @@ export async function POST(_req: NextRequest) {
     await Promise.all([
       sb
         .from("athletes")
-        .select("full_name, goals, training_schedule, onboarding_data, tracks_cycle, avg_cycle_length")
+        .select("full_name, goals, training_schedule, onboarding_data, movement_results, tracks_cycle, avg_cycle_length")
         .eq("id", athleteId)
         .single(),
       sb
@@ -133,17 +133,37 @@ export async function POST(_req: NextRequest) {
   const athleteName = athlete?.full_name || "Athlete";
   const athleteGoals = athlete?.goals || athlete?.onboarding_data?.goals || "Not specified";
   const trainingSchedule = athlete?.training_schedule
-    ? `Training days: ${Object.entries(athlete.training_schedule as Record<string, { type: string; time?: string }>)
+    ? `Training days: ${Object.entries(athlete.training_schedule as Record<string, { type: string; time?: string; frequency?: string }>)
         .filter(([, v]) => v?.type)
-        .map(([day, v]) => `${day} (${v.type}${v.time ? ` @ ${v.time}` : ""})`)
+        .map(([day, v]) => `${day} (${v.type}${v.time ? ` @ ${v.time}` : ""}${v.frequency === "alternating" ? ", every other week" : ""})`)
         .join(", ")}`
     : "Schedule not set";
+
+  const od = athlete?.onboarding_data as Record<string, any> || {};
+  const movementResults = athlete?.movement_results as Record<string, Record<string, string>> | null;
+  const movementSummary = movementResults
+    ? Object.entries(movementResults)
+        .filter(([, v]) => !v.skipped)
+        .map(([test, answers]) => {
+          const { video_analysis, video_score, video_flags, ...rest } = answers as any;
+          return `${test}: ${Object.entries(rest).map(([q, a]) => `${q}=${a}`).join(", ")}`;
+        })
+        .join("\n")
+    : null;
+  const athleteContext = [
+    od.age ? `Age: ${od.age}` : null,
+    od.quit_pattern ? `Fall-off pattern: ${od.quit_pattern}` : null,
+    od.intensity_response ? `Intensity response: ${od.intensity_response}` : null,
+    od.alcohol ? `Alcohol: ${od.alcohol}` : null,
+    od.health_conditions?.length ? `Health conditions: ${od.health_conditions.join(", ")}` : null,
+  ].filter(Boolean).join("\n");
 
   const prompt = `Generate a concise morning training brief for ${athleteName} (${today}).
 
 ATHLETE PROFILE:
 - Goals: ${athleteGoals}
 - ${trainingSchedule}
+${athleteContext ? `- ${athleteContext.split("\n").join("\n- ")}` : ""}
 
 READINESS${healthDate !== today ? ` (from ${healthDate})` : ""}:
 - Status: ${health?.readiness_call || "unknown"}
@@ -162,7 +182,7 @@ ${session ? `${session.session_label} (${session.session_type})\n${session.conte
 BLOCK: ${block ? `${block.name}, vika ${weekNum} af ${block.planned_weeks}` : "None"}
 WEEK: ${week ? `${week.sessions_completed}/${week.sessions_planned} lokið` : "No data"}
 ACTIVE LIMITATIONS: ${limitations.length > 0 ? limitations.map((l: any) => `${l.limitation_type}: ${l.status}`).join(", ") : "None"}
-${cycleContext}${recentTopSets ? `\nRECENT TRAINING (last 3 days): ${recentTopSets}` : ""}
+${movementSummary ? `\nMOVEMENT SCREEN FINDINGS:\n${movementSummary}\nFactor these into today's session guidance — flag any mismatch between today's session and known restrictions.` : ""}${cycleContext}${recentTopSets ? `\nRECENT TRAINING (last 3 days): ${recentTopSets}` : ""}
 
 Write a focused morning brief (4–6 bullet points). Include:
 1. Go / modify / rest call — be decisive based on readiness + trend

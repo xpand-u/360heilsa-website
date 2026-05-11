@@ -15,8 +15,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 
-const ATHLETE_ID = process.env.RAFN_ATHLETE_ID!;
-const INGEST_SECRET = process.env.HEALTH_INGEST_SECRET!;
+// Legacy single-athlete fallback — kept for backwards compat if still configured
+const LEGACY_SECRET    = process.env.HEALTH_INGEST_SECRET;
+const LEGACY_ATHLETE_ID = process.env.RAFN_ATHLETE_ID;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,10 +100,26 @@ function computeReadiness(
 // ─── Route ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // Auth check
   const auth = req.headers.get("authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!INGEST_SECRET || token !== INGEST_SECRET) {
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const sb = createServerClient();
+
+  // Look up athlete by their per-athlete ingest token
+  let ATHLETE_ID: string | undefined;
+  const { data: athleteByToken } = await sb
+    .from("athletes")
+    .select("id")
+    .eq("health_ingest_token", token)
+    .maybeSingle();
+
+  if (athleteByToken) {
+    ATHLETE_ID = athleteByToken.id;
+  } else if (LEGACY_SECRET && token === LEGACY_SECRET && LEGACY_ATHLETE_ID) {
+    // Backwards compat: old single-athlete setup using HEALTH_INGEST_SECRET
+    ATHLETE_ID = LEGACY_ATHLETE_ID;
+  } else {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -180,7 +197,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const sb = createServerClient();
   const dates = Object.keys(days).sort();
   let inserted = 0;
 

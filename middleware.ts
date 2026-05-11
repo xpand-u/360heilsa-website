@@ -52,6 +52,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Onboarding gate — authenticated users who haven't finished onboarding
+  // cannot access /dashboard or any /api/dashboard route.
+  // The `ob` cookie is set by /api/onboarding/save when onboarding completes.
+  const onboardingComplete = request.cookies.get("ob")?.value === "1";
+  const isDashboardRoute = pathname.startsWith("/dashboard") ||
+    (pathname.startsWith("/api/") && !pathname.startsWith("/api/onboarding"));
+
+  if (!onboardingComplete && isDashboardRoute) {
+    if (isAPI) {
+      return NextResponse.json({ error: "Onboarding required" }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/onboarding", request.url));
+  }
+
   return response;
 }
 

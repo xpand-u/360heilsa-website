@@ -19,261 +19,145 @@ const T = {
   blue:      "#58a6ff",
 };
 
-type Step = "intro" | "intake" | "schedule" | "movement" | "foundation" | "done";
+type Step = "intro" | "intake" | "upload" | "schedule" | "movement" | "foundation" | "done";
 
 // ─── Movement tests definition ────────────────────────────────────────────────
+// YouTube video IDs for each movement demo — swap these for your preferred clips
+const MOVEMENT_VIDEOS: Record<string, string> = {
+  overhead_squat:      "0CIxWWMy5D4", // FMS official — Overhead Deep Squat assessment
+  aslr:               "t9AsBEtlSJk", // FMS-aligned ASLR assessment demo
+  ankle_dorsiflexion: "u3NbKOXl75k", // Aleks Physio — Knee-to-Wall ankle mobility test
+  wall_angels:        "JQsSjHjRV5w", // Wall Angels with coaching cues
+  posture:            "KMgbOr5LSUY", // Postural assessment — what to look for front and side
+  thomas_test:        "NMDd-4NspHs", // Physiotutors — Thomas Test / Iliopsoas Tightness
+};
+
 const MOVEMENT_TESTS = [
   {
     id: "overhead_squat",
     name: "Overhead Squat",
     why: "This single movement tells me about your ankles, hips, thoracic spine, and shoulders simultaneously. It's the most efficient test I have.",
-    setup: "Stand with feet shoulder-width apart. Raise both arms straight overhead. Squat as deep as comfortably possible. Do 3 slow reps.",
+    setup: "Stand with feet shoulder-width apart, toes pointing slightly out. Raise both arms straight up overhead — elbows fully straight, arms close to your head. Squat as deep as you can while keeping your arms pointing up and your heels flat on the floor. Do 3 slow reps. Film yourself from the side if possible — it makes this much easier to assess.",
     film: true,
     questions: [
-      { id: "arms_fall", label: "Did your arms fall forward?", options: ["Noticeably", "Slightly", "No"] },
-      { id: "heels_rise", label: "Did your heels rise off the floor?", options: ["Yes", "Slightly", "No"] },
-      { id: "knees_cave", label: "Did your knees cave inward?", options: ["Both", "Left only", "Right only", "No"] },
-      { id: "depth", label: "How deep could you squat?", options: ["Below parallel", "Parallel", "Above parallel"] },
+      { id: "arms_fall", label: "Did your arms drift forward as you squatted?", options: ["Yes, noticeably", "Slightly", "No, stayed vertical"] },
+      { id: "heels_rise", label: "Did your heels come off the floor?", options: ["Yes", "Slightly", "No"] },
+      { id: "knees_cave", label: "Did your knees collapse inward?", options: ["Both sides", "Left only", "Right only", "No"] },
+      { id: "depth", label: "How deep could you squat?", options: ["Thighs below horizontal (deep squat)", "Thighs roughly horizontal — like sitting in a chair", "Couldn't get to chair height"] },
     ],
   },
   {
     id: "aslr",
     name: "Active Straight Leg Raise",
-    why: "Shows me your hamstring length and, more importantly, whether your pelvis can stay stable while one leg moves. Asymmetry here is common and programmable.",
-    setup: "Lie flat on your back, legs straight. Keep one leg completely flat. Raise the other leg as high as you can while keeping it straight. Repeat both sides.",
+    why: "Shows me your hamstring length and whether your pelvis stays stable while one leg moves. Asymmetry here is common and shapes how I program you.",
+    setup: "Lie flat on your back on the floor, both legs straight. Before you start, press the back of your resting leg hard into the floor — keep it there the whole time. Raise the other leg as high as you can, keeping the knee straight (no bending at the knee). Stop the moment you feel tightness behind your leg, or when the resting leg starts to lift off the floor. Have someone watch or prop your phone up to see your angle. Switch sides.",
     film: false,
     questions: [
-      { id: "right_height", label: "Right leg — how high?", options: ["Past 90°", "Around 70°", "Below 60°"] },
-      { id: "left_height", label: "Left leg — how high?", options: ["Past 90°", "Around 70°", "Below 60°"] },
-      { id: "flat_leg_stays", label: "Did the flat leg stay down?", options: ["Both sides yes", "One side lifted", "Both sides lifted"] },
+      { id: "right_height", label: "Right leg — where did it stop?", options: ["Pointing straight up at the ceiling or past", "About halfway up — pointing at the far wall", "Low — closer to the floor than vertical"] },
+      { id: "left_height", label: "Left leg — where did it stop?", options: ["Pointing straight up at the ceiling or past", "About halfway up — pointing at the far wall", "Low — closer to the floor than vertical"] },
+      { id: "flat_leg_stays", label: "Did the resting leg stay flat on the floor?", options: ["Yes, both sides", "It lifted slightly on one side", "It lifted on both sides"] },
     ],
   },
   {
     id: "ankle_dorsiflexion",
     name: "Ankle Mobility Test",
     why: "Limited ankle mobility is one of the most common reasons squat depth fails, knees compensate, and runners develop downstream issues. Takes 2 minutes to screen.",
-    setup: "Stand facing a wall. Place your big toe about 10cm from the wall. Drive your knee forward to touch the wall without lifting your heel. Move further back until you find your limit. Test both ankles.",
+    setup: "Stand barefoot facing a wall. Place your big toe close to the wall — just enough to slide a finger in the gap. Keep your heel flat on the floor and drive your knee forward to touch the wall. If you can do it, move your foot further back and try again. Find the furthest distance where your knee can still touch the wall without your heel lifting. Test both ankles.",
     film: false,
     questions: [
-      { id: "right_ankle", label: "Right ankle — could you touch the wall at 10cm?", options: ["Yes, easily", "Yes, barely", "No, had to move closer"] },
-      { id: "left_ankle", label: "Left ankle — could you touch the wall at 10cm?", options: ["Yes, easily", "Yes, barely", "No, had to move closer"] },
-      { id: "asymmetry", label: "Was there a noticeable difference side to side?", options: ["Yes, significant", "Slightly", "No, felt even"] },
+      { id: "right_ankle", label: "Right ankle — what was your furthest distance?", options: ["Beyond a hand-length (15cm+)", "Around a fist-width (10–14cm)", "Less than a fist-width (under 10cm)"] },
+      { id: "left_ankle", label: "Left ankle — what was your furthest distance?", options: ["Beyond a hand-length (15cm+)", "Around a fist-width (10–14cm)", "Less than a fist-width (under 10cm)"] },
+      { id: "asymmetry", label: "Was there a clear difference between ankles?", options: ["Yes, significant difference", "Slight difference", "Both felt the same"] },
     ],
   },
   {
     id: "wall_angels",
     name: "Wall Angels",
-    why: "Tells me about your thoracic extension and shoulder mobility — both critical for overhead pressing, posture under load, and injury prevention in the upper body.",
-    setup: "Stand with your back flat against a wall, feet 6 inches out. Place your arms in a goalpost position against the wall. Slowly slide your arms up overhead and back down, keeping everything touching the wall.",
+    why: "Tells me about your thoracic extension and shoulder mobility — both critical for overhead pressing, posture under load, and injury prevention.",
+    setup: "Stand with your back against a wall, heels about 15cm away. Press your entire back against the wall — head, upper back, and lower back all in contact. Raise your arms to a goalpost position (elbows at shoulder height, bent 90°) and press them flat against the wall. Slowly slide your arms up overhead, then back down, keeping your head, back, and arms touching the wall the entire time. Notice what lifts or loses contact.",
     film: false,
     questions: [
-      { id: "arms_stay", label: "Could you keep your arms on the wall throughout?", options: ["Yes, full range", "Partially — lost contact at the top", "No — lost contact early"] },
-      { id: "back_stays", label: "Did your lower back stay against the wall?", options: ["Yes", "It arched slightly", "It arched significantly"] },
+      { id: "arms_stay", label: "How far could you slide your arms up while keeping them on the wall?", options: ["All the way overhead — full contact throughout", "Past halfway up, but lost contact before reaching overhead", "Lost contact almost immediately from the starting position"] },
+      { id: "back_stays", label: "What did your lower back do as your arms rose?", options: ["Stayed flat against the wall", "Lifted slightly off the wall", "Pulled away significantly from the wall"] },
+    ],
+  },
+  {
+    id: "posture",
+    name: "Postural Analysis",
+    why: "Static posture tells me about your habitual patterns — forward head, rounded shoulders, pelvic tilt, asymmetries. These show up in your training and predict where problems will develop.",
+    setup: "Wear fitted clothing or no shirt. Stand naturally — don't try to stand 'perfectly'. Set your phone on a surface at hip height using the self-timer, or have someone take the photos. Stand about 2 metres away. Take all 4 photos (front, both sides, back) and upload them below — Franklin analyzes all 4 together for the most accurate read.",
+    film: false,
+    photoAnalysis: true,
+    questions: [
+      { id: "head_position", label: "Looking at your side photo — where is your head?", options: ["Ears roughly over shoulders", "Head slightly forward of shoulders", "Head noticeably forward (chin jutting out)"] },
+      { id: "shoulders", label: "Looking at your front photo — your shoulders:", options: ["Even height, sitting back", "One higher than the other", "Both rounded forward"] },
+      { id: "lower_back", label: "Looking at your side photo — your lower back:", options: ["Moderate curve — looks neutral", "Very flat (no curve)", "Exaggerated curve (belly pushes forward)"] },
+      { id: "feet", label: "Looking at your front photo — your feet point:", options: ["Mostly straight ahead", "Both turned out", "Unevenly — one out, one straight"] },
     ],
   },
   {
     id: "thomas_test",
     name: "Hip Flexor Test",
-    why: "Tight hip flexors affect your squat, your running gait, your posture, and your lower back. This is extremely common in anyone who sits during the day.",
-    setup: "Sit on the edge of a bed or firm couch. Lie back while pulling both knees to your chest. Let one leg lower toward the floor while keeping the other held to your chest. Observe what happens. Test both sides.",
+    why: "Tight hip flexors affect your squat, running gait, posture, and lower back. Extremely common in anyone who sits during the day.",
+    setup: "Sit on the edge of a bed or firm couch with your legs hanging off. Lie back and pull both knees to your chest. Then let one leg slowly lower and hang off the edge — keep the other knee hugged to your chest. Let the hanging leg fully relax. Notice two things: does the thigh drop toward the floor, and does the knee stay bent or start to straighten? Hold for a few seconds, then switch sides.",
     film: false,
     questions: [
-      { id: "right_hip", label: "Right leg — does it hang flat or stay elevated?", options: ["Hangs flat", "Slightly elevated", "Significantly elevated"] },
-      { id: "left_hip", label: "Left leg — does it hang flat or stay elevated?", options: ["Hangs flat", "Slightly elevated", "Significantly elevated"] },
-      { id: "knee_flexion", label: "Does the hanging leg's knee straighten or stay bent?", options: ["Stays at ~90°", "Knee straightens noticeably", "Knee straightens fully"] },
+      { id: "right_hip", label: "Right leg — where does the thigh hang?", options: ["Drops to roughly horizontal (flat)", "Stays slightly above horizontal", "Stays well above horizontal"] },
+      { id: "left_hip", label: "Left leg — where does the thigh hang?", options: ["Drops to roughly horizontal (flat)", "Stays slightly above horizontal", "Stays well above horizontal"] },
+      { id: "knee_flexion", label: "What does the hanging leg's knee do?", options: ["Stays bent around 90°", "Straightens out somewhat", "Straightens almost fully"] },
     ],
   },
 ];
 
-// ─── SVG Animations ───────────────────────────────────────────────────────────
-
-function OverheadSquatAnim() {
+// ─── Video Demo Thumbnail ─────────────────────────────────────────────────────
+function VideoDemoThumbnail({ testId, onPlay }: { testId: string; onPlay: (id: string) => void }) {
+  const videoId = MOVEMENT_VIDEOS[testId];
+  if (!videoId) return null;
   return (
-    <svg viewBox="0 0 120 180" width="120" height="180" style={{ display: "block" }}>
-      <style>{`
-        @keyframes squat {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(18px); }
-        }
-        @keyframes kneesBend {
-          0%, 100% { transform: rotate(0deg); }
-          50% { transform: rotate(28deg); }
-        }
-        @keyframes armsUp {
-          0%, 100% { transform: rotate(-15deg); }
-          50% { transform: rotate(-5deg); }
-        }
-        .squat-body { animation: squat 2.5s ease-in-out infinite; transform-origin: 60px 90px; }
-        .squat-leg-r { animation: kneesBend 2.5s ease-in-out infinite; transform-origin: 66px 118px; }
-        .squat-leg-l { animation: kneesBend 2.5s ease-in-out infinite; transform-origin: 54px 118px; }
-        .squat-arm-r { animation: armsUp 2.5s ease-in-out infinite; transform-origin: 70px 80px; }
-        .squat-arm-l { animation: armsUp 2.5s ease-in-out infinite; transform-origin: 50px 80px; }
-      `}</style>
-      <g className="squat-body">
-        {/* Head */}
-        <circle cx="60" cy="38" r="12" fill="none" stroke={T.accent} strokeWidth="2" />
-        {/* Torso */}
-        <line x1="60" y1="50" x2="60" y2="100" stroke={T.accent} strokeWidth="2.5" strokeLinecap="round" />
-        {/* Shoulders */}
-        <line x1="60" y1="62" x2="72" y2="72" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-        <line x1="60" y1="62" x2="48" y2="72" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-        {/* Arms up */}
-        <g className="squat-arm-r">
-          <line x1="72" y1="72" x2="84" y2="44" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-        </g>
-        <g className="squat-arm-l">
-          <line x1="48" y1="72" x2="36" y2="44" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-        </g>
-        {/* Hips */}
-        <line x1="52" y1="100" x2="68" y2="100" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-        {/* Legs */}
-        <g className="squat-leg-r">
-          <line x1="66" y1="100" x2="72" y2="130" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-          <line x1="72" y1="130" x2="68" y2="158" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-        </g>
-        <g className="squat-leg-l">
-          <line x1="54" y1="100" x2="48" y2="130" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-          <line x1="48" y1="130" x2="52" y2="158" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-        </g>
-        {/* Feet */}
-        <line x1="68" y1="158" x2="78" y2="158" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-        <line x1="42" y1="158" x2="52" y2="158" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-      </g>
-    </svg>
+    <div
+      onClick={() => onPlay(videoId)}
+      style={{
+        position: "relative", width: "100%", borderRadius: "10px",
+        overflow: "hidden", cursor: "pointer", aspectRatio: "16/9",
+        background: T.surface2,
+      }}
+    >
+      <img
+        src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+        alt="Exercise demo"
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      />
+      {/* Dark overlay */}
+      <div style={{
+        position: "absolute", inset: 0,
+        background: "linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.45))",
+      }} />
+      {/* Play button */}
+      <div style={{
+        position: "absolute", inset: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{
+          width: "48px", height: "48px", borderRadius: "50%",
+          background: "rgba(200,169,110,0.92)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
+        }}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M6 3.5L14.5 9L6 14.5V3.5Z" fill="#0c0c0b" />
+          </svg>
+        </div>
+      </div>
+      <div style={{
+        position: "absolute", bottom: "8px", left: "10px",
+        fontSize: "10px", color: "rgba(255,255,255,0.7)", letterSpacing: "0.06em",
+        textTransform: "uppercase",
+      }}>
+        Watch demo
+      </div>
+    </div>
   );
 }
-
-function ASLRAnim() {
-  return (
-    <svg viewBox="0 0 200 100" width="200" height="100" style={{ display: "block" }}>
-      <style>{`
-        @keyframes legRaise {
-          0%, 100% { transform: rotate(0deg); }
-          40%, 60% { transform: rotate(-65deg); }
-        }
-        .aslr-leg { animation: legRaise 3s ease-in-out infinite; transform-origin: 100px 58px; }
-      `}</style>
-      {/* Ground */}
-      <line x1="20" y1="72" x2="180" y2="72" stroke={T.border2} strokeWidth="1" />
-      {/* Body lying flat */}
-      {/* Head */}
-      <circle cx="28" cy="56" r="10" fill="none" stroke={T.accent} strokeWidth="2" />
-      {/* Torso */}
-      <line x1="38" y1="58" x2="100" y2="58" stroke={T.accent} strokeWidth="2.5" strokeLinecap="round" />
-      {/* Static leg */}
-      <line x1="100" y1="58" x2="165" y2="58" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-      <line x1="165" y1="58" x2="175" y2="66" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-      {/* Raising leg */}
-      <g className="aslr-leg">
-        <line x1="100" y1="58" x2="155" y2="58" stroke={T.text} strokeWidth="2" strokeLinecap="round" />
-        <line x1="155" y1="58" x2="163" y2="66" stroke={T.text} strokeWidth="2" strokeLinecap="round" />
-      </g>
-    </svg>
-  );
-}
-
-function AnkleAnim() {
-  return (
-    <svg viewBox="0 0 120 160" width="120" height="160" style={{ display: "block" }}>
-      <style>{`
-        @keyframes kneeForward {
-          0%, 100% { transform: translateX(0); }
-          50% { transform: translateX(8px); }
-        }
-        .ankle-knee { animation: kneeForward 2s ease-in-out infinite; transform-origin: 55px 90px; }
-      `}</style>
-      {/* Wall */}
-      <rect x="85" y="10" width="8" height="150" fill={T.surface2} stroke={T.border} strokeWidth="1" />
-      {/* Foot on floor */}
-      <line x1="30" y1="150" x2="75" y2="150" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-      {/* Lower leg */}
-      <line x1="40" y1="150" x2="55" y2="100" stroke={T.accent} strokeWidth="2.5" strokeLinecap="round" />
-      {/* Knee driving forward */}
-      <g className="ankle-knee">
-        <circle cx="55" cy="95" r="5" fill="none" stroke={T.text} strokeWidth="2" />
-        {/* Upper leg */}
-        <line x1="55" y1="95" x2="62" y2="55" stroke={T.accent} strokeWidth="2.5" strokeLinecap="round" />
-      </g>
-      {/* Head/torso simplified */}
-      <circle cx="65" cy="38" r="10" fill="none" stroke={T.accent} strokeWidth="2" />
-      <line x1="65" y1="48" x2="62" y2="60" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-      {/* Target indicator */}
-      <text x="88" y="145" fontSize="8" fill={T.muted}>wall</text>
-    </svg>
-  );
-}
-
-function WallAngelsAnim() {
-  return (
-    <svg viewBox="0 0 140 200" width="140" height="200" style={{ display: "block" }}>
-      <style>{`
-        @keyframes armSlide {
-          0%, 100% { transform: rotate(0deg); }
-          50% { transform: rotate(-45deg); }
-        }
-        .wa-arm-r { animation: armSlide 2.5s ease-in-out infinite; transform-origin: 78px 90px; }
-        .wa-arm-l { animation: armSlide 2.5s ease-in-out infinite; transform-origin: 62px 90px; }
-      `}</style>
-      {/* Wall */}
-      <rect x="100" y="10" width="8" height="185" fill={T.surface2} stroke={T.border} strokeWidth="1" />
-      {/* Person against wall */}
-      <circle cx="72" cy="48" r="12" fill="none" stroke={T.accent} strokeWidth="2" />
-      {/* Torso */}
-      <line x1="72" y1="60" x2="72" y2="120" stroke={T.accent} strokeWidth="2.5" strokeLinecap="round" />
-      {/* Right arm — goalpost then up */}
-      <g className="wa-arm-r">
-        <line x1="78" y1="80" x2="100" y2="80" stroke={T.text} strokeWidth="2" strokeLinecap="round" />
-        <line x1="100" y1="80" x2="100" y2="60" stroke={T.text} strokeWidth="2" strokeLinecap="round" />
-      </g>
-      {/* Left arm */}
-      <g className="wa-arm-l" style={{ transform: "scaleX(-1)", transformOrigin: "62px 90px" }}>
-        <line x1="62" y1="80" x2="40" y2="80" stroke={T.text} strokeWidth="2" strokeLinecap="round" />
-        <line x1="40" y1="80" x2="40" y2="60" stroke={T.text} strokeWidth="2" strokeLinecap="round" />
-      </g>
-      {/* Legs */}
-      <line x1="72" y1="120" x2="65" y2="170" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-      <line x1="72" y1="120" x2="79" y2="170" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-      <text x="104" y="145" fontSize="8" fill={T.muted}>wall</text>
-    </svg>
-  );
-}
-
-function ThomasTestAnim() {
-  return (
-    <svg viewBox="0 0 220 120" width="220" height="120" style={{ display: "block" }}>
-      <style>{`
-        @keyframes hipHang {
-          0%, 100% { transform: rotate(5deg); }
-          50% { transform: rotate(18deg); }
-        }
-        .thomas-hang { animation: hipHang 3s ease-in-out infinite; transform-origin: 120px 68px; }
-      `}</style>
-      {/* Table/bed edge */}
-      <rect x="80" y="68" width="100" height="8" fill={T.surface2} stroke={T.border} strokeWidth="1" />
-      {/* Person lying on table - upper body */}
-      <circle cx="60" cy="52" r="10" fill="none" stroke={T.accent} strokeWidth="2" />
-      <line x1="70" y1="56" x2="130" y2="62" stroke={T.accent} strokeWidth="2.5" strokeLinecap="round" />
-      {/* Knee pulled to chest */}
-      <line x1="90" y1="64" x2="75" y2="44" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-      <line x1="75" y1="44" x2="68" y2="32" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-      {/* Hanging leg with animation */}
-      <g className="thomas-hang">
-        <line x1="120" y1="68" x2="148" y2="100" stroke={T.text} strokeWidth="2.5" strokeLinecap="round" />
-        <line x1="148" y1="100" x2="160" y2="96" stroke={T.text} strokeWidth="2" strokeLinecap="round" />
-      </g>
-      {/* Arrow indicating hanging direction */}
-      <text x="158" y="115" fontSize="8" fill={T.muted}>hangs here</text>
-    </svg>
-  );
-}
-
-const TEST_ANIMATIONS: Record<string, React.ReactNode> = {
-  overhead_squat:      <OverheadSquatAnim />,
-  aslr:               <ASLRAnim />,
-  ankle_dorsiflexion: <AnkleAnim />,
-  wall_angels:        <WallAngelsAnim />,
-  thomas_test:        <ThomasTestAnim />,
-};
 
 // ─── Schedule Days ─────────────────────────────────────────────────────────────
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
@@ -284,9 +168,16 @@ const SESSION_TYPES = ["lifting", "run", "jits", "other"] as const;
 const SESSION_TYPE_LABELS: Record<string, string> = {
   lifting: "Lift", run: "Run", jits: "BJJ", other: "Other",
 };
-const TIME_OPTIONS = ["morning", "afternoon", "evening"] as const;
-const TIME_LABELS: Record<string, string> = {
-  morning: "Morning (7am)", afternoon: "Afternoon (12pm)", evening: "Evening (6pm)",
+const DURATION_OPTIONS = [30, 45, 60, 75, 90];
+const DEFAULT_DURATION: Record<string, number> = {
+  lifting: 75, run: 45, jits: 90, conditioning: 60, mobility: 45, other: 60,
+};
+// Maps vague AI suggestions to sensible default times
+const TIME_PRESETS: Record<string, string> = {
+  morning: "07:00", afternoon: "12:00", evening: "18:00",
+  "early morning": "06:00", "late morning": "10:00",
+  "early afternoon": "13:00", "late afternoon": "16:00",
+  "late evening": "20:00",
 };
 
 // ─── Main Onboarding Client ───────────────────────────────────────────────────
@@ -305,13 +196,29 @@ export default function OnboardingClient() {
   const intakeStarted = useRef(false);
 
   // Schedule state
-  const [scheduleDays, setScheduleDays] = useState<{ day: string; type: string; time: string }[]>([]);
+  const [scheduleDays, setScheduleDays] = useState<{ day: string; type: string; time: string; frequency: string; duration: number }[]>([]);
   const [calendarToken, setCalendarToken] = useState<string | null>(null);
   const [calendarLinked, setCalendarLinked] = useState(false);
 
+  // Blood panel upload state
+  const [bloodPanelFile, setBloodPanelFile]       = useState<File | null>(null);
+  const [bloodPanelUploading, setBloodPanelUploading] = useState(false);
+  const [bloodPanelUrl, setBloodPanelUrl]         = useState<string | null>(null);
+  const [bloodPanelDragging, setBloodPanelDragging] = useState(false);
+
+  // Schedule suggestion state
+  const [scheduleSuggesting, setScheduleSuggesting]   = useState(false);
+  const [scheduleReasoning, setScheduleReasoning]     = useState("");
+  const [scheduleSuggested, setScheduleSuggested]     = useState(false);
+
   // Movement state
   const [movementIdx, setMovementIdx] = useState(0);
-  const [movementAnswers, setMovementAnswers] = useState<Record<string, Record<string, string>>>({});
+  const [movementAnswers, setMovementAnswers] = useState<Record<string, Record<string, string | boolean>>>({});
+  const [videoModalId, setVideoModalId] = useState<string | null>(null);
+
+  // Postural photo state
+  const [posturePhotos, setPosturePhotos] = useState<Record<string, string>>({});
+  const [postureAnalyzing, setPostureAnalyzing] = useState(false);
 
   // Saving
   const [saving, setSaving] = useState(false);
@@ -328,6 +235,9 @@ export default function OnboardingClient() {
     if (step === "intake" && !intakeStarted.current) {
       intakeStarted.current = true;
       streamIntake(null);
+    }
+    if (step === "schedule" && !scheduleSuggested && !scheduleSuggesting) {
+      suggestSchedule();
     }
   }, [step]);
 
@@ -361,9 +271,10 @@ export default function OnboardingClient() {
         const { done, value } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
-        // Strip hidden tokens from visible text
+        // Strip hidden tokens from visible text (including partial [INTAKE_DATA] mid-stream)
         const visibleText = buf
           .replace(/\[INTAKE_DATA\][\s\S]*?\[\/INTAKE_DATA\]/g, "")
+          .replace(/\[INTAKE_DATA\][\s\S]*/g, "")
           .replace("[INTAKE_COMPLETE]", "")
           .trim();
         setIntakeMsgs(prev => {
@@ -377,8 +288,9 @@ export default function OnboardingClient() {
       if (dataMatch) {
         try { parsedIntakeData = JSON.parse(dataMatch[1].trim()); } catch { /* ignore */ }
       }
-      // Detect completion
-      if (buf.includes("[INTAKE_COMPLETE]")) {
+      // Detect completion — also treat [INTAKE_DATA] presence as completion fallback
+      // in case max_tokens truncated [INTAKE_COMPLETE] off the end
+      if (buf.includes("[INTAKE_COMPLETE]") || parsedIntakeData) {
         setIntakeComplete(true);
         const cleanSummary = buf
           .replace(/\[INTAKE_DATA\][\s\S]*?\[\/INTAKE_DATA\]/g, "")
@@ -395,6 +307,36 @@ export default function OnboardingClient() {
     }
   }
 
+  async function uploadBloodPanel() {
+    if (!bloodPanelFile) { setStep("schedule"); return; }
+    setBloodPanelUploading(true);
+    try {
+      const { createBrowserClient } = await import("@supabase/ssr");
+      const sb = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) { setStep("schedule"); return; }
+      const ext = bloodPanelFile.name.split(".").pop() || "pdf";
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error } = await sb.storage.from("blood-panels").upload(path, bloodPanelFile, { upsert: true });
+      if (!error) {
+        const { data: urlData } = sb.storage.from("blood-panels").getPublicUrl(path);
+        setBloodPanelUrl(urlData?.publicUrl || "uploaded");
+        // Save URL to athlete record
+        await fetch("/api/onboarding/save-blood-panel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: urlData?.publicUrl, filename: bloodPanelFile.name }),
+        });
+      }
+    } catch { /* proceed anyway */ } finally {
+      setBloodPanelUploading(false);
+      setStep("schedule");
+    }
+  }
+
   function sendIntake() {
     const msg = intakeInput.trim();
     if (!msg || intakeStreaming) return;
@@ -407,14 +349,24 @@ export default function OnboardingClient() {
     setScheduleDays(prev => {
       const exists = prev.find(d => d.day === day);
       if (exists) return prev.filter(d => d.day !== day);
-      return [...prev, { day, type: "lifting", time: "morning" }];
+      return [...prev, { day, type: "lifting", time: "07:00", frequency: "every", duration: DEFAULT_DURATION.lifting }];
     });
   }
 
-  function updateDayField(day: string, field: "type" | "time", value: string) {
+  function updateDayField(day: string, field: "type" | "time" | "frequency", value: string) {
     setScheduleDays(prev =>
-      prev.map(d => d.day === day ? { ...d, [field]: value } : d)
+      prev.map(d => {
+        if (d.day !== day) return d;
+        const updated = { ...d, [field]: value };
+        // Auto-update duration when session type changes (only if user hasn't manually set it)
+        if (field === "type") updated.duration = DEFAULT_DURATION[value] ?? 60;
+        return updated;
+      })
     );
+  }
+
+  function updateDayDuration(day: string, duration: number) {
+    setScheduleDays(prev => prev.map(d => d.day === day ? { ...d, duration } : d));
   }
 
   function openCalendar() {
@@ -425,6 +377,45 @@ export default function OnboardingClient() {
     const webcalUrl = `webcal://${host}/api/calendar/feed?token=${calendarToken}`;
     window.location.href = webcalUrl;
     setCalendarLinked(true);
+  }
+
+  // ── Schedule suggestion ─────────────────────────────────────────────────────
+  async function suggestSchedule() {
+    setScheduleSuggesting(true);
+    setScheduleReasoning("");
+    try {
+      // Fetch/generate calendar token early so sync button works on this step
+      fetch("/api/onboarding/calendar-token")
+        .then(r => r.json())
+        .then(d => { if (d.calendarToken) setCalendarToken(d.calendarToken); })
+        .catch(() => {});
+
+      const intakeData = (window as any).__intakeParsedData || {};
+      const res = await fetch("/api/onboarding/schedule-suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intakeData }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.days && Array.isArray(data.days)) {
+        // Pre-populate schedule
+        setScheduleDays(data.days.map((d: any) => {
+          const raw = (d.time || "morning").toLowerCase().trim();
+          // If AI returned a HH:MM string already, use it; otherwise map from preset
+          const time = /^\d{1,2}:\d{2}$/.test(raw)
+            ? raw.padStart(5, "0")
+            : TIME_PRESETS[raw] || "07:00";
+          const type = d.type || "lifting";
+          const duration = d.duration && DURATION_OPTIONS.includes(d.duration) ? d.duration : DEFAULT_DURATION[type] ?? 60;
+          return { day: d.day.toLowerCase().slice(0, 3), type, time, frequency: d.frequency || "every", duration };
+        }));
+        setScheduleSuggested(true);
+      }
+      if (data.reasoning) setScheduleReasoning(data.reasoning);
+    } catch { /* ignore */ } finally {
+      setScheduleSuggesting(false);
+    }
   }
 
   // ── Video frame analysis for overhead squat ────────────────────────────────
@@ -482,6 +473,52 @@ export default function OnboardingClient() {
     });
   }
 
+  // ── Postural photo analysis ────────────────────────────────────────────────
+  async function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handlePosturePhoto(slot: string, file: File) {
+    const b64 = await fileToBase64(file);
+    const updated = { ...posturePhotos, [slot]: b64 };
+    setPosturePhotos(updated);
+
+    // Run analysis once all 4 photos are uploaded
+    if (Object.keys(updated).length === 4) {
+      setPostureAnalyzing(true);
+      try {
+        const res = await fetch("/api/dashboard/assess/screen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ photos: updated }),
+        });
+        if (res.ok) {
+          const reader = res.body!.getReader();
+          const decoder = new TextDecoder();
+          let report = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            report += decoder.decode(value, { stream: true });
+          }
+          setMovementAnswers(prev => ({
+            ...prev,
+            posture: { ...(prev.posture || {}), photo_analysis: report, photos_count: String(Object.keys(updated).length) },
+          }));
+        }
+      } catch (err) {
+        console.error("Posture analysis failed:", err);
+      } finally {
+        setPostureAnalyzing(false);
+      }
+    }
+  }
+
   // ── Movement test helpers ───────────────────────────────────────────────────
   function setAnswer(testId: string, questionId: string, value: string) {
     setMovementAnswers(prev => ({
@@ -493,6 +530,15 @@ export default function OnboardingClient() {
   function currentTestComplete() {
     const test = MOVEMENT_TESTS[movementIdx];
     const answers = movementAnswers[test.id] || {};
+    // Video analysis unlocks next
+    if (test.film && answers.video_analysis) return true;
+    // Photo upload unlocks posture test (either analysis done or at least 1 photo + questions answered)
+    if ((test as any).photoAnalysis) {
+      // Analysis complete, or all questions answered as manual fallback
+      if (answers.photo_analysis) return true;
+      if (test.questions.every(q => answers[q.id])) return true;
+      return false;
+    }
     return test.questions.every(q => answers[q.id]);
   }
 
@@ -515,7 +561,6 @@ export default function OnboardingClient() {
       });
       const d = await res.json();
       if (d.calendarToken) setCalendarToken(d.calendarToken);
-      localStorage.setItem("onboarding_complete", "true");
       router.push("/dashboard");
     } finally {
       setSaving(false);
@@ -543,10 +588,11 @@ export default function OnboardingClient() {
 
   // Step labels for progress indicator
   const STEP_META = [
-    { key: "intake",     label: "Intake" },
-    { key: "schedule",   label: "Schedule" },
-    { key: "movement",   label: "Movement" },
-    { key: "foundation", label: "Foundation" },
+    { key: "intake",      label: "Intake" },
+    { key: "upload",      label: "Upload" },
+    { key: "schedule",    label: "Schedule" },
+    { key: "movement",    label: "Movement" },
+    { key: "foundation",  label: "Foundation" },
   ];
   const activeStepIdx = STEP_META.findIndex(s => s.key === step);
 
@@ -609,14 +655,16 @@ export default function OnboardingClient() {
           display: "flex", flexDirection: "column",
           paddingTop: "env(safe-area-inset-top)",
         }}>
-          {/* Top brand bar */}
-          <div style={{ padding: "24px 24px 0" }}>
-            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "22px", width: "auto", filter: "brightness(0) invert(1)", opacity: 0.5, display: "block" }} />
-          </div>
-
           {/* Hero */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 24px 24px" }}>
-            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "44px", width: "auto", filter: "brightness(0) invert(1)", display: "block", marginBottom: "28px" }} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "48px 24px 24px" }}>
+            {/* Coach identity row */}
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "28px" }}>
+              <img src="/logo-heilsa.png" alt="360" style={{ height: "48px", width: "48px", objectFit: "contain", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "22px", letterSpacing: "0.08em", color: T.text, lineHeight: 1.1 }}>COACH FRANKLIN</div>
+                <div style={{ fontSize: "11px", letterSpacing: "0.1em", color: T.muted, textTransform: "uppercase", marginTop: "3px" }}>Elite Performance System</div>
+              </div>
+            </div>
 
             <p style={{ fontSize: "18px", lineHeight: 1.55, fontWeight: 300, margin: "0 0 16px", color: T.text }}>
               I&apos;m Coach Franklin. Most coaches give you a program. I build a system around you.
@@ -689,10 +737,13 @@ export default function OnboardingClient() {
     return (
       <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
         <div style={{ ...desktopCard, display: "flex", flexDirection: "column", padding: "48px 40px", gap: "32px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "36px", width: "auto", filter: "brightness(0) invert(1)", display: "block" }} />
-            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em", color: T.muted }}>
-              COACH FRANKLIN — Elite Performance System
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <img src="/logo-heilsa.png" alt="360" style={{ height: "52px", width: "52px", objectFit: "contain", flexShrink: 0 }} />
+            <div>
+              <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "24px", letterSpacing: "0.08em", color: T.text, lineHeight: 1.1 }}>COACH FRANKLIN</div>
+              <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "0.85rem", letterSpacing: "0.1em", color: T.muted, marginTop: "3px" }}>
+                ELITE PERFORMANCE SYSTEM
+              </div>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -807,13 +858,10 @@ export default function OnboardingClient() {
             borderTop: `1px solid ${T.border}`,
             background: T.surface,
           }}>
-            {intakeComplete ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <div style={{ fontSize: "13px", color: T.green, fontWeight: 600, textAlign: "center" }}>
-                  ✓ Franklin has everything he needs.
-                </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {intakeComplete && (
                 <button
-                  onClick={() => setStep("schedule")}
+                  onClick={() => setStep("upload")}
                   style={{
                     background: T.accent, border: "none", borderRadius: "10px",
                     color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
@@ -823,20 +871,21 @@ export default function OnboardingClient() {
                 >
                   NEXT — SET YOUR SCHEDULE →
                 </button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <input
+              )}
+              <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+                <textarea
                   value={intakeInput}
-                  onChange={e => setIntakeInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendIntake()}
-                  placeholder={intakeStreaming ? "Franklin is typing…" : "Your answer…"}
+                  onChange={e => { setIntakeInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px"; }}
+                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendIntake())}
+                  placeholder={intakeStreaming ? "Franklin is typing…" : intakeComplete ? "Anything to add before continuing…" : "Your answer…"}
                   disabled={intakeStreaming}
+                  rows={1}
                   style={{
                     flex: 1, background: T.bg, border: `1px solid ${T.border}`,
-                    borderRadius: "22px", color: T.text, fontSize: "16px",
-                    padding: "11px 16px", outline: "none",
-                    opacity: intakeStreaming ? 0.5 : 1,
+                    borderRadius: "16px", color: T.text, fontSize: "16px",
+                    padding: "11px 16px", outline: "none", resize: "none",
+                    opacity: intakeStreaming ? 0.5 : 1, lineHeight: 1.5,
+                    fontFamily: "inherit", overflow: "hidden",
                   }}
                 />
                 <button
@@ -853,7 +902,7 @@ export default function OnboardingClient() {
                   ↑
                 </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       );
@@ -903,31 +952,31 @@ export default function OnboardingClient() {
             <div ref={intakeEndRef} />
           </div>
           <div style={{ padding: "16px 24px", borderTop: `1px solid ${T.border}` }}>
-            {intakeComplete ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div style={{ fontSize: "13px", color: T.green, fontWeight: 600 }}>✓ Franklin has everything he needs.</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {intakeComplete && (
                 <button
-                  onClick={() => setStep("schedule")}
+                  onClick={() => setStep("upload")}
                   style={{
                     background: T.accent, border: "none", borderRadius: "8px",
                     color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif",
                     fontSize: "1rem", letterSpacing: "0.08em", padding: "13px", width: "100%",
                   }}
                 >NEXT — SET YOUR SCHEDULE →</button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", gap: "8px" }}>
-                <input
+              )}
+              <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+                <textarea
                   value={intakeInput}
-                  onChange={e => setIntakeInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendIntake()}
-                  placeholder={intakeStreaming ? "Franklin is typing…" : "Your answer…"}
+                  onChange={e => { setIntakeInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px"; }}
+                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendIntake())}
+                  placeholder={intakeStreaming ? "Franklin is typing…" : intakeComplete ? "Anything to add before continuing…" : "Your answer…"}
                   disabled={intakeStreaming}
+                  rows={1}
                   style={{
                     flex: 1, background: T.bg, border: `1px solid ${T.border}`,
                     borderRadius: "8px", color: T.text, fontSize: "14px",
-                    padding: "12px 14px", outline: "none",
-                    opacity: intakeStreaming ? 0.5 : 1,
+                    padding: "12px 14px", outline: "none", resize: "none",
+                    opacity: intakeStreaming ? 0.5 : 1, lineHeight: 1.5,
+                    fontFamily: "inherit", overflow: "hidden",
                   }}
                 />
                 <button
@@ -941,7 +990,124 @@ export default function OnboardingClient() {
                   }}
                 >SEND</button>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── STEP: UPLOAD (blood panel) ───────────────────────────────────────────────
+  if (step === "upload") {
+    const content = (
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: "24px" }}>
+        {/* Explanation */}
+        <div style={{ background: T.accentDim, border: `1px solid rgba(200,169,110,0.2)`, borderRadius: "12px", padding: "18px" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: T.text, marginBottom: "8px" }}>Got a blood panel?</div>
+          <p style={{ fontSize: "13px", color: T.muted, lineHeight: 1.7, margin: 0 }}>
+            Upload your most recent blood work and I can factor it into your programming — recovery capacity, iron levels, testosterone, vitamin D. It changes how I load you.
+          </p>
+        </div>
+
+        {/* Upload area */}
+        <div>
+          <label
+            onDragOver={e => { e.preventDefault(); setBloodPanelDragging(true); }}
+            onDragEnter={e => { e.preventDefault(); setBloodPanelDragging(true); }}
+            onDragLeave={() => setBloodPanelDragging(false)}
+            onDrop={e => {
+              e.preventDefault();
+              setBloodPanelDragging(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) { setBloodPanelFile(f); setBloodPanelUrl("pending"); }
+            }}
+            style={{
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              gap: "10px", padding: "36px 20px", borderRadius: "12px", cursor: "pointer",
+              border: `2px dashed ${bloodPanelUrl ? T.green : bloodPanelDragging ? T.accent : T.border}`,
+              background: bloodPanelUrl ? "rgba(63,185,80,0.06)" : bloodPanelDragging ? "rgba(200,169,110,0.08)" : T.surface2,
+              transition: "all 0.15s",
+            }}>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.gif" style={{ display: "none" }}
+              onChange={e => {
+                const f = e.target.files?.[0];
+                if (f) { setBloodPanelFile(f); setBloodPanelUrl("pending"); }
+              }}
+            />
+            {bloodPanelUrl && bloodPanelUrl !== "pending" ? (
+              <>
+                <span style={{ fontSize: "28px" }}>✓</span>
+                <span style={{ fontSize: "13px", color: T.green, fontWeight: 600 }}>Uploaded</span>
+              </>
+            ) : bloodPanelFile ? (
+              <>
+                <span style={{ fontSize: "24px" }}>📄</span>
+                <span style={{ fontSize: "13px", color: T.text }}>{bloodPanelFile.name}</span>
+                <span style={{ fontSize: "11px", color: T.muted }}>Ready to upload</span>
+              </>
+            ) : bloodPanelDragging ? (
+              <>
+                <span style={{ fontSize: "28px", color: T.accent }}>↓</span>
+                <span style={{ fontSize: "13px", color: T.accent, fontWeight: 600 }}>Drop it here</span>
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: "28px", color: T.muted }}>+</span>
+                <span style={{ fontSize: "13px", color: T.text }}>Click to select or drag a file here</span>
+                <span style={{ fontSize: "11px", color: T.muted }}>PDF or image</span>
+              </>
             )}
+          </label>
+        </div>
+
+        {/* Note */}
+        <p style={{ fontSize: "11px", color: T.muted, textAlign: "center", margin: 0 }}>
+          This is optional. Skip if you don&apos;t have one or don&apos;t want to share it.
+        </p>
+      </div>
+    );
+
+    if (isMobile) {
+      return (
+        <div style={{ ...baseScreen, height: "100dvh", display: "flex", flexDirection: "column", paddingTop: "env(safe-area-inset-top)" }}>
+          <StepProgress />
+          <div style={{ padding: "14px 20px 12px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "0.95rem", letterSpacing: "0.08em", color: T.accent }}>BLOOD PANEL</div>
+            <div style={{ fontSize: "11px", color: T.muted, marginTop: "2px" }}>Optional — upload for smarter programming</div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto" }}>{content}</div>
+          <div style={{ flexShrink: 0, padding: "12px 20px", paddingBottom: "max(12px, env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.surface, display: "flex", gap: "10px" }}>
+            <button onClick={() => setStep("schedule")} disabled={bloodPanelUploading}
+              style={{ flex: 1, padding: "15px", borderRadius: "10px", border: `1px solid ${T.border}`, background: T.surface2, color: T.text, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em" }}>
+              SKIP
+            </button>
+            <button onClick={uploadBloodPanel} disabled={bloodPanelUploading}
+              style={{ flex: 2, padding: "15px", borderRadius: "10px", background: bloodPanelFile ? T.accent : T.surface2, color: bloodPanelFile ? T.bg : T.text, cursor: bloodPanelUploading ? "wait" : "pointer", fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em", border: bloodPanelFile ? "none" : `1px solid ${T.border}` } as React.CSSProperties}>
+              {bloodPanelUploading ? "UPLOADING..." : bloodPanelFile ? "SAVE AND CONTINUE →" : "SKIP FOR NOW →"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+        <div style={{ ...desktopCard, maxWidth: "480px" }}>
+          <StepProgress />
+          <div style={{ padding: "20px 24px 12px", borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em", color: T.accent }}>BLOOD PANEL</div>
+            <div style={{ fontSize: "12px", color: T.muted, marginTop: "2px" }}>Optional — upload your most recent blood work for smarter programming</div>
+          </div>
+          {content}
+          <div style={{ padding: "0 24px 24px", display: "flex", gap: "10px" }}>
+            <button onClick={() => setStep("schedule")} disabled={bloodPanelUploading}
+              style={{ flex: 1, padding: "14px", borderRadius: "10px", border: `1px solid ${T.border}`, background: T.surface2, color: T.text, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em" }}>
+              SKIP
+            </button>
+            <button onClick={uploadBloodPanel} disabled={bloodPanelUploading}
+              style={{ flex: 2, padding: "14px", borderRadius: "10px", border: bloodPanelFile ? "none" : `1px solid ${T.border}`, background: bloodPanelFile ? T.accent : T.surface2, color: bloodPanelFile ? T.bg : T.text, cursor: bloodPanelUploading ? "wait" : "pointer", fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.08em" }}>
+              {bloodPanelUploading ? "UPLOADING..." : bloodPanelFile ? "SAVE AND CONTINUE →" : "SKIP FOR NOW →"}
+            </button>
           </div>
         </div>
       </div>
@@ -952,6 +1118,24 @@ export default function OnboardingClient() {
   if (step === "schedule") {
     const scheduleContent = (
       <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: isMobile ? "20px 20px" : "20px 24px" }}>
+        {/* Franklin's schedule recommendation */}
+        {(scheduleSuggesting || scheduleReasoning) && (
+          <div style={{ background: T.accentDim, border: `1px solid rgba(200,169,110,0.2)`, borderRadius: "12px", padding: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: scheduleSuggesting ? 0 : "10px" }}>
+              <img src="/logo-heilsa.png" alt="360" style={{ height: "24px", width: "24px", objectFit: "contain" }} />
+              <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", color: T.accent, textTransform: "uppercase" }}>
+                {scheduleSuggesting ? "Franklin is building your schedule..." : "Franklin's recommendation"}
+              </span>
+            </div>
+            {scheduleReasoning && (
+              <p style={{ fontSize: "13px", color: T.text, lineHeight: 1.7, margin: "0 0 10px" }}>{scheduleReasoning}</p>
+            )}
+            {scheduleSuggested && (
+              <p style={{ fontSize: "11px", color: T.muted, margin: 0 }}>Schedule pre-filled below. Adjust any day if needed.</p>
+            )}
+          </div>
+        )}
+
         {/* Day selector */}
         <div>
           <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, marginBottom: "10px" }}>
@@ -1014,23 +1198,59 @@ export default function OnboardingClient() {
                     </button>
                   ))}
                 </div>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {TIME_OPTIONS.map(time => (
-                    <button
-                      key={time}
-                      onClick={() => updateDayField(slot.day, "time", time)}
-                      style={{
-                        minHeight: "36px", padding: "5px 14px", borderRadius: "6px", cursor: "pointer",
-                        fontSize: "12px", transition: "all 0.15s",
-                        background: slot.time === time ? T.surface : "transparent",
-                        border: `1px solid ${slot.time === time ? T.accent : T.border}`,
-                        color: slot.time === time ? T.text : T.muted,
-                        flex: 1,
-                      }}
-                    >
-                      {TIME_LABELS[time]}
-                    </button>
-                  ))}
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{ fontSize: "11px", color: T.muted, flexShrink: 0 }}>Start time</span>
+                  <input
+                    type="time"
+                    value={slot.time || "07:00"}
+                    onChange={e => updateDayField(slot.day, "time", e.target.value)}
+                    style={{
+                      flex: 1, background: T.bg, border: `1px solid ${T.border}`,
+                      borderRadius: "8px", color: T.text, fontSize: "15px",
+                      padding: "8px 12px", outline: "none", fontFamily: "inherit",
+                      cursor: "pointer",
+                    }}
+                  />
+                </div>
+                {/* Duration chips */}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "11px", color: T.muted, flexShrink: 0 }}>Duration</span>
+                  <div style={{ display: "flex", gap: "5px", flex: 1 }}>
+                    {DURATION_OPTIONS.map(mins => (
+                      <button
+                        key={mins}
+                        onClick={() => updateDayDuration(slot.day, mins)}
+                        style={{
+                          flex: 1, padding: "6px 0", borderRadius: "6px", cursor: "pointer",
+                          fontSize: "11px", fontWeight: 600, transition: "all 0.15s", border: "none",
+                          background: (slot.duration || DEFAULT_DURATION[slot.type] || 60) === mins ? T.accent : T.surface,
+                          color: (slot.duration || DEFAULT_DURATION[slot.type] || 60) === mins ? T.bg : T.muted,
+                        }}
+                      >
+                        {mins < 60 ? `${mins}m` : mins === 60 ? "1h" : `${Math.floor(mins/60)}h${mins%60 ? `${mins%60}` : ""}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Frequency toggle */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "4px", borderTop: `1px solid ${T.border}` }}>
+                  <span style={{ fontSize: "11px", color: T.muted }}>Frequency</span>
+                  <div style={{ display: "flex", borderRadius: "6px", overflow: "hidden", border: `1px solid ${T.border}` }}>
+                    {(["every", "alternating"] as const).map(freq => (
+                      <button
+                        key={freq}
+                        onClick={() => updateDayField(slot.day, "frequency", freq)}
+                        style={{
+                          padding: "5px 12px", fontSize: "11px", fontWeight: 600, cursor: "pointer", border: "none",
+                          background: (slot.frequency || "every") === freq ? T.accent : "transparent",
+                          color: (slot.frequency || "every") === freq ? T.bg : T.muted,
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {freq === "every" ? "Every week" : "Every other week"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
@@ -1169,15 +1389,10 @@ export default function OnboardingClient() {
           </div>
         </div>
 
-        {/* Animation */}
-        <div style={{
-          background: T.surface2, border: `1px solid ${T.border}`,
-          borderRadius: "12px", padding: "24px",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          minHeight: "100px",
-        }}>
-          {TEST_ANIMATIONS[test.id]}
-        </div>
+        {/* Video demo */}
+        {MOVEMENT_VIDEOS[test.id] && (
+          <VideoDemoThumbnail testId={test.id} onPlay={setVideoModalId} />
+        )}
 
         {/* Instructions */}
         <div style={{ background: T.accentDim, border: `1px solid ${T.accent}30`, borderRadius: "10px", padding: "14px 16px" }}>
@@ -1232,10 +1447,85 @@ export default function OnboardingClient() {
           </div>
         )}
 
+        {/* Postural photo upload */}
+        {(test as any).photoAnalysis && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", color: T.muted }}>
+              UPLOAD YOUR PHOTOS <span style={{ color: T.accent }}>({Object.keys(posturePhotos).length}/4)</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {([
+                ["anterior",      "Front"],
+                ["right_lateral", "Right Side"],
+                ["left_lateral",  "Left Side"],
+                ["posterior",     "Back"],
+              ] as [string, string][]).map(([slot, label]) => {
+                const hasPhoto = !!posturePhotos[slot];
+                return (
+                  <label
+                    key={slot}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center",
+                      justifyContent: "center", gap: "6px",
+                      border: `1.5px ${hasPhoto ? "solid" : "dashed"} ${hasPhoto ? T.accent : T.border}`,
+                      borderRadius: "10px",
+                      background: hasPhoto ? T.accentDim : T.surface2,
+                      cursor: "pointer", padding: "14px 8px", minHeight: "80px",
+                      position: "relative", overflow: "hidden",
+                    }}
+                  >
+                    {hasPhoto ? (
+                      <>
+                        <img
+                          src={`data:image/jpeg;base64,${posturePhotos[slot]}`}
+                          alt={label}
+                          style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "6px" }}
+                        />
+                        <div style={{ fontSize: "10px", color: T.accent, fontWeight: 700 }}>✓ {label}</div>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: "22px" }}>📷</span>
+                        <span style={{ fontSize: "11px", color: T.muted, textAlign: "center" }}>{label}</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handlePosturePhoto(slot, f); e.target.value = ""; }}
+                    />
+                  </label>
+                );
+              })}
+            </div>
+            {postureAnalyzing && (
+              <div style={{ fontSize: "12px", color: T.accent, display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ display: "inline-block", width: "12px", height: "12px", border: `2px solid ${T.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                Analyzing posture…
+              </div>
+            )}
+            {movementAnswers.posture?.photo_analysis && !postureAnalyzing && (
+              <div style={{ fontSize: "12px", color: T.green }}>
+                ✓ Postural analysis complete — Franklin has your findings
+              </div>
+            )}
+            {Object.keys(posturePhotos).length > 0 && Object.keys(posturePhotos).length < 4 && !postureAnalyzing && (
+              <div style={{ fontSize: "11px", color: T.muted }}>
+                {4 - Object.keys(posturePhotos).length} more photo{4 - Object.keys(posturePhotos).length > 1 ? "s" : ""} to go — upload all 4 to run the analysis
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Questions */}
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", color: T.muted }}>
-            WHAT DID YOU FIND?
+            {test.film && movementAnswers[test.id]?.video_analysis
+              ? "WHAT DID YOU FIND? (optional — video captured)"
+              : (test as any).photoAnalysis && movementAnswers.posture?.photo_analysis
+              ? "CONFIRM OR OVERRIDE (optional — analysis done)"
+              : "WHAT DID YOU FIND?"}
           </div>
           {test.questions.map(q => (
             <div key={q.id}>
@@ -1281,7 +1571,7 @@ export default function OnboardingClient() {
             </button>
             <button
               onClick={() => {
-                setMovementAnswers(prev => ({ ...prev, [test.id]: { ...(prev[test.id] || {}), skipped: "true" } }));
+                setMovementAnswers(prev => ({ ...prev, [test.id]: { ...(prev[test.id] || {}), skipped: true } }));
                 if (isLast) setStep("foundation"); else setMovementIdx(i => i + 1);
               }}
               style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", fontSize: "11px", padding: "4px", textDecoration: "underline", textDecorationColor: T.border }}
@@ -1352,7 +1642,7 @@ export default function OnboardingClient() {
             </button>
             <button
               onClick={() => {
-                setMovementAnswers(prev => ({ ...prev, [test.id]: { ...(prev[test.id] || {}), skipped: "true" } }));
+                setMovementAnswers(prev => ({ ...prev, [test.id]: { ...(prev[test.id] || {}), skipped: true } }));
                 if (isLast) setStep("foundation"); else setMovementIdx(i => i + 1);
               }}
               style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", fontSize: "12px", padding: "4px" }}
@@ -1562,6 +1852,46 @@ export default function OnboardingClient() {
           <div style={{ overflowY: "auto", maxHeight: "700px" }}>
             {foundationContent}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Video Modal ───────────────────────────────────────────────────────────────
+  if (videoModalId) {
+    return (
+      <div
+        style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 300,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          padding: "20px",
+        }}
+        onClick={() => setVideoModalId(null)}
+      >
+        <div
+          style={{ width: "100%", maxWidth: "700px" }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div style={{ aspectRatio: "16/9", borderRadius: "12px", overflow: "hidden", background: "#000" }}>
+            <iframe
+              width="100%"
+              height="100%"
+              src={`https://www.youtube.com/embed/${videoModalId}?autoplay=1&rel=0&modestbranding=1`}
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              style={{ border: "none", display: "block" }}
+            />
+          </div>
+          <button
+            onClick={() => setVideoModalId(null)}
+            style={{
+              marginTop: "16px", background: "transparent", border: `1px solid ${T.border}`,
+              borderRadius: "8px", color: T.muted, cursor: "pointer",
+              fontSize: "13px", padding: "10px 24px", width: "100%",
+            }}
+          >
+            Close — back to the test
+          </button>
         </div>
       </div>
     );

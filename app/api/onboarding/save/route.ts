@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     if (structured.tracks_cycle != null) updatePayload.tracks_cycle     = structured.tracks_cycle;
     if (structured.avg_cycle_length)     updatePayload.avg_cycle_length  = structured.avg_cycle_length;
     if (structured.contraceptive_method) updatePayload.contraceptive_method = structured.contraceptive_method;
+    if (structured.unit_system)          updatePayload.unit_system        = structured.unit_system;
     // Store structured goals for program generation
     updatePayload.goals_structured = structured;
   }
@@ -66,5 +67,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, calendarToken });
+  const res = NextResponse.json({ ok: true, calendarToken });
+  // Set a lightweight cookie so middleware can gate /dashboard without a DB call
+  res.cookies.set("ob", "1", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365, // 1 year
+  });
+  return res;
 }

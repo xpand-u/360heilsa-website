@@ -85,10 +85,22 @@ export async function POST(req: NextRequest) {
         for (const s of (log.top_sets || [])) {
           if (!s.exercise || !s.load_kg) continue;
           const sName = s.exercise.toLowerCase().trim();
-          // Fuzzy name match — one must contain the other (min 4 chars)
-          const nameMatch =
-            exerciseLower.length >= 4 && sName.includes(exerciseLower) ||
-            sName.length >= 4 && exerciseLower.includes(sName);
+          // Exact match or one name fully contained in the other as a word-boundary match.
+          // Require at least 5 chars to avoid short tokens ("row", "fly") matching broadly.
+          // "bench press" matches "bench press", "barbell bench press" — not "bench pressdown"
+          const nameMatch = sName === exerciseLower ||
+            (exerciseLower.length >= 5 && (
+              sName === exerciseLower ||
+              sName.startsWith(exerciseLower + " ") ||
+              sName.endsWith(" " + exerciseLower) ||
+              sName.includes(" " + exerciseLower + " ")
+            )) ||
+            (sName.length >= 5 && (
+              exerciseLower === sName ||
+              exerciseLower.startsWith(sName + " ") ||
+              exerciseLower.endsWith(" " + sName) ||
+              exerciseLower.includes(" " + sName + " ")
+            ));
           if (!nameMatch) continue;
           const sReps = parseFloat(String(s.reps || 0)) || 0;
           if (Math.abs(sReps - currReps) <= 1) {

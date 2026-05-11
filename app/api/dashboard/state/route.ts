@@ -41,7 +41,7 @@ export async function GET() {
         .eq("status", "active").maybeSingle(),
       sb.from("limitations").select("*").eq("athlete_id", athleteId)
         .neq("status", "resolved"),
-      sb.from("athletes").select("full_name, goals, onboarding_complete, onboarding_completed_at, tracks_cycle, avg_cycle_length")
+      sb.from("athletes").select("full_name, goals, onboarding_complete, onboarding_completed_at, tracks_cycle, avg_cycle_length, unit_system, onboarding_data")
         .eq("id", athleteId).single(),
     ]);
 
@@ -165,6 +165,7 @@ export async function GET() {
       goals:    athlete?.goals,
       onboardingComplete: athlete?.onboarding_complete,
       tracksCycle: athlete?.tracks_cycle || false,
+      unitSystem: (athlete?.unit_system || (athlete?.onboarding_data as any)?.unit_system || "metric") as "metric" | "imperial",
       cyclePhase,
     },
     block: block

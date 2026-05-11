@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { formatWeight, weightLabel, weightInputToKg, type UnitSystem } from "@/lib/units";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -181,7 +182,13 @@ export default function DashboardClient() {
   const [logInput, setLogInput]       = useState("");
   const [logEntries, setLogEntries]   = useState<any[]>([]);
   const [doneModal, setDoneModal]     = useState(false);
+  const [rescheduleId, setRescheduleId]   = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
   const [doneNotes, setDoneNotes]     = useState("");
+  const [doneFeedbackRpe, setDoneFeedbackRpe]         = useState<number | null>(null);
+  const [doneFeedbackEnergy, setDoneFeedbackEnergy]   = useState<string | null>(null);
+  const [doneFeedbackLiked, setDoneFeedbackLiked]     = useState<Set<string>>(new Set());
+  const [doneFeedbackDisliked, setDoneFeedbackDisliked] = useState<Set<string>>(new Set());
   const [chatMsgs, setChatMsgs]       = useState<{ role: string; content: string }[]>([]);
   const [chatInput, setChatInput]     = useState("");
   const [streaming, setStreaming]     = useState(false);
@@ -311,16 +318,9 @@ export default function DashboardClient() {
   }, [runsLoading]);
 
   useEffect(() => {
-    // Check onboarding — redirect new users
-    const done = localStorage.getItem("onboarding_complete");
-    if (!done) {
-      fetch("/api/onboarding/status")
-        .then(r => r.json())
-        .then(d => {
-          if (!d.onboarding_complete) router.push("/onboarding");
-          else localStorage.setItem("onboarding_complete", "true");
-        });
-    }
+    // Onboarding enforcement is handled by middleware (ob cookie).
+    // DashboardClient can trust it's only rendered for users who have completed onboarding.
+
     // Check Foundation Week debrief readiness
     fetch("/api/dashboard/foundation-debrief")
       .then(r => r.json())
@@ -413,13 +413,37 @@ export default function DashboardClient() {
     if (d.ok) setLogEntries(d.entries);
   }
 
+  async function rescheduleSession() {
+    if (!rescheduleId || !rescheduleDate) return;
+    await fetch("/api/dashboard/reschedule", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: rescheduleId, newDate: rescheduleDate }),
+    });
+    setRescheduleId(null);
+    setRescheduleDate("");
+    mutate();
+  }
+
   async function markDone() {
+    const feedback = (doneFeedbackRpe || doneFeedbackEnergy || doneFeedbackLiked.size || doneFeedbackDisliked.size || doneNotes)
+      ? {
+          rpe: doneFeedbackRpe,
+          energy: doneFeedbackEnergy,
+          liked: Array.from(doneFeedbackLiked),
+          disliked: Array.from(doneFeedbackDisliked),
+          notes: doneNotes || null,
+        }
+      : null;
     await fetch("/api/dashboard/mark-done", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: doneNotes, sessionDate: data?.session?.planned_date }),
+      body: JSON.stringify({ notes: doneNotes, sessionDate: data?.session?.planned_date, feedback }),
     });
     setDoneModal(false);
     setDoneNotes("");
+    setDoneFeedbackRpe(null);
+    setDoneFeedbackEnergy(null);
+    setDoneFeedbackLiked(new Set());
+    setDoneFeedbackDisliked(new Set());
     fetchData();
   }
 
@@ -469,7 +493,7 @@ export default function DashboardClient() {
     setSessionLogSaving(true);
     const top_sets = sessionLogExercises
       .filter(e => e.exercise.trim())
-      .map(e => ({ exercise: e.exercise, sets: Number(e.sets) || null, reps: e.reps || null, load_kg: Number(e.load_kg) || null }));
+      .map(e => ({ exercise: e.exercise, sets: Number(e.sets) || null, reps: e.reps || null, load_kg: weightInputToKg(e.load_kg, unitSystem) ?? null }));
     const res = await fetch("/api/dashboard/session", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -828,24 +852,31 @@ export default function DashboardClient() {
     const msg = (overrideMsg || chatInput).trim();
     if (!msg || streaming) return;
     setChatInput("");
+    // Capture history before state update — only include messages with content
+    const history = chatMsgs.filter(m => m.content);
     setChatMsgs(p => [...p, { role: "user", content: msg }, { role: "assistant", content: "" }]);
     setStreaming(true);
     let buf = "";
     try {
       const res = await fetch("/api/dashboard/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify({ message: msg, history }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
       const reader = res.body!.getReader();
       const dec = new TextDecoder();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        buf += dec.decode(value);
+        buf += dec.decode(value, { stream: true });
         setChatMsgs(p => { const u = [...p]; u[u.length - 1] = { role: "assistant", content: buf }; return u; });
       }
-    } catch {
-      setChatMsgs(p => { const u = [...p]; u[u.length - 1] = { role: "assistant", content: "Error. Try again." }; return u; });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setChatMsgs(p => { const u = [...p]; u[u.length - 1] = { role: "assistant", content: `Something went wrong: ${msg}` }; return u; });
     } finally {
       setStreaming(false);
       if (buf.toLowerCase().includes("logged") || buf.toLowerCase().includes("marked")) {
@@ -862,6 +893,8 @@ export default function DashboardClient() {
 
   const { session, week, weekSessions, health, block, limitations, insights, healthDate, today, athlete: athleteProfile } = data;
   const cyclePhase = athleteProfile?.cyclePhase;
+  const unitSystem: UnitSystem = athleteProfile?.unitSystem || "metric";
+  const wLabel = weightLabel(unitSystem);
   const readiness      = health?.readiness_call || "unknown";
   const rc             = READINESS_CONFIG[readiness] || READINESS_CONFIG.unknown;
   const shoulder       = limitations?.find((l: any) => l.limitation_type === "shoulder");
@@ -917,10 +950,10 @@ export default function DashboardClient() {
       <div style={{ padding: "14px 18px", borderBottom: `1px solid ${T.border}`, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.1rem", letterSpacing: "0.08em", color: T.accent }}>
-            360 HEILSA COACH
+            COACH FRANKLIN
           </div>
           <div style={{ fontSize: "11px", color: T.muted, marginTop: "2px" }}>
-            Ask about today's session · Adjust load · Log notes
+            Your coach — ask anything
           </div>
         </div>
         {isMobile && (
@@ -929,27 +962,48 @@ export default function DashboardClient() {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
-        {chatMsgs.length === 0 && (
-          <div style={{ marginTop: "16px" }}>
-            <p style={{ color: T.muted, fontSize: "12px", textAlign: "center", marginBottom: "16px" }}>
-              How can I help you today?
-            </p>
-            {[
-              "How are you feeling today?",
-              "What are the key focuses for this session?",
-              "Should I reduce the load?",
-              "Log that I finished my warm-up",
-            ].map(q => (
-              <button key={q} onClick={() => sendChat(q)} style={{
-                display: "block", width: "100%", textAlign: "left",
-                background: T.surface2, border: `1px solid ${T.border}`,
-                borderRadius: "8px", color: T.muted, cursor: "pointer",
-                fontSize: "12px", padding: "9px 12px", marginBottom: "7px",
-                fontFamily: "inherit",
-              }}>{q}</button>
-            ))}
-          </div>
-        )}
+        {chatMsgs.length === 0 && (() => {
+          const suggestions: string[] = [];
+
+          // Session-specific
+          if (session) {
+            suggestions.push(`Walk me through ${session.session_label}`);
+            if (readiness === "yellow" || readiness === "red")
+              suggestions.push(`My readiness is ${readiness} — how should I adjust today?`);
+            else
+              suggestions.push("What should I focus on technically today?");
+            suggestions.push("I want to swap an exercise — what do you suggest?");
+          } else {
+            suggestions.push("No session today — what should I do?");
+          }
+
+          // Block / programming
+          if (block) {
+            suggestions.push(`How far am I into ${block.name}?`);
+          } else {
+            suggestions.push("When do I get my next training block?");
+          }
+
+          // Log / admin
+          suggestions.push("Log a note about today's session");
+
+          return (
+            <div style={{ marginTop: "16px" }}>
+              <p style={{ color: T.muted, fontSize: "12px", marginBottom: "14px", lineHeight: 1.5 }}>
+                Franklin is ready. Ask anything — session questions, load adjustments, programming, or just how you&apos;re feeling going into today.
+              </p>
+              {suggestions.slice(0, 4).map(q => (
+                <button key={q} onClick={() => sendChat(q)} style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  background: T.surface2, border: `1px solid ${T.border}`,
+                  borderRadius: "8px", color: T.muted, cursor: "pointer",
+                  fontSize: "12px", padding: "9px 12px", marginBottom: "7px",
+                  fontFamily: "inherit", lineHeight: 1.4,
+                }}>{q}</button>
+              ))}
+            </div>
+          );
+        })()}
         {chatMsgs.map((m, i) => (
           <div key={i} style={{
             padding: "10px 14px", borderRadius: "10px", fontSize: "13px", lineHeight: 1.65,
@@ -971,7 +1025,7 @@ export default function DashboardClient() {
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendChat()}
-            placeholder="Type here…"
+            placeholder="Message Coach Franklin…"
             disabled={streaming}
             style={{
               flex: 1, background: T.surface2, border: `1px solid ${T.border}`,
@@ -998,7 +1052,7 @@ export default function DashboardClient() {
       {!isMobile && (
         <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: "52px", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
-            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "28px", width: "auto", filter: "brightness(0) invert(1)", display: "block" }} />
+            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "28px", width: "auto", display: "block" }} />
             <div style={{ display: "flex", gap: "2px" }}>
               {([["today", "TODAY"], ["program", "PROGRAM"], ["history", "HISTORY"], ["running", "RUNNING"], ["assessment", "ASSESSMENT"], ["nutrition", "NUTRITION"]] as [NavItem, string][]).map(([id, label]) => (
                 <button key={id} onClick={() => setNav(id)} style={{
@@ -1060,7 +1114,7 @@ export default function DashboardClient() {
       {/* ── MOBILE TOP BAR ── */}
       {isMobile && (
         <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: "52px", flexShrink: 0 }}>
-          <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "26px", width: "auto", filter: "brightness(0) invert(1)", display: "block" }} />
+          <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "26px", width: "auto", display: "block" }} />
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <button onClick={fetchData} disabled={refreshing} style={{
               background: "none", border: `1px solid ${T.border}`, borderRadius: "6px",
@@ -1420,6 +1474,16 @@ export default function DashboardClient() {
                               {s.label}
                             </div>
                           </div>
+                          {!isDone && !isMissed && (
+                            <button
+                              onClick={() => { setRescheduleId(s.id); setRescheduleDate(s.scheduled_date); }}
+                              title="Move session"
+                              style={{
+                                background: "none", border: "none", cursor: "pointer",
+                                color: T.muted, fontSize: "12px", padding: "2px 4px", flexShrink: 0,
+                              }}
+                            >⤵</button>
+                          )}
                           <div style={{
                             width: "16px", height: "16px", borderRadius: "50%",
                             display: "flex", alignItems: "center", justifyContent: "center",
@@ -1641,19 +1705,33 @@ export default function DashboardClient() {
                                 {s.notes}
                               </div>
                             )}
-                            {isToday && !isDone && (
-                              <button
-                                onClick={() => { setSessionLogModal(true); setSessionLogDate(data?.today || ""); }}
-                                style={{
-                                  marginTop: "10px", background: T.accentDim,
-                                  border: `1px solid ${T.accent}`, borderRadius: "8px",
-                                  color: T.accent, cursor: "pointer",
-                                  fontFamily: "'BebasNeue', sans-serif", fontSize: "0.85rem",
-                                  letterSpacing: "0.08em", padding: "7px 16px",
-                                }}
-                              >
-                                + LOG THIS SESSION
-                              </button>
+                            {!isDone && !isMissed && (
+                              <div style={{ marginTop: "10px", display: "flex", gap: "8px" }}>
+                                {isToday && (
+                                  <button
+                                    onClick={() => { setSessionLogModal(true); setSessionLogDate(data?.today || ""); }}
+                                    style={{
+                                      flex: 1, background: T.accentDim,
+                                      border: `1px solid ${T.accent}`, borderRadius: "8px",
+                                      color: T.accent, cursor: "pointer",
+                                      fontFamily: "'BebasNeue', sans-serif", fontSize: "0.85rem",
+                                      letterSpacing: "0.08em", padding: "7px 16px",
+                                    }}
+                                  >
+                                    + LOG THIS SESSION
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => { setRescheduleId(s.id); setRescheduleDate(s.scheduled_date); }}
+                                  style={{
+                                    background: "transparent", border: `1px solid ${T.border}`,
+                                    borderRadius: "8px", color: T.muted, cursor: "pointer",
+                                    fontSize: "0.8rem", padding: "7px 14px",
+                                  }}
+                                >
+                                  Move
+                                </button>
+                              </div>
                             )}
                           </div>
                         </Card>
@@ -1709,7 +1787,7 @@ export default function DashboardClient() {
                               <div style={{ fontSize: "11px", color: T.muted }}>
                                 {log.top_sets.slice(0, 3).map((s: any, i: number) => (
                                   <span key={i} style={{ marginRight: "10px" }}>
-                                    {s.exercise}{s.load_kg ? ` ${s.load_kg}kg` : ""}{s.sets && s.reps ? ` ${s.sets}×${s.reps}` : ""}
+                                    {s.exercise}{s.load_kg ? ` ${formatWeight(s.load_kg, unitSystem)}` : ""}{s.sets && s.reps ? ` ${s.sets}×${s.reps}` : ""}
                                   </span>
                                 ))}
                               </div>
@@ -3047,7 +3125,7 @@ export default function DashboardClient() {
                         <input value={ex.reps} onChange={e => setSessionLogExercises(p => p.map((x,j) => j===i ? {...x, reps: e.target.value} : x))}
                           placeholder="6" style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: "6px", color: T.text, fontSize: "12px", padding: "7px 8px", outline: "none", fontFamily: "inherit" }} />
                         <input value={ex.load_kg} onChange={e => setSessionLogExercises(p => p.map((x,j) => j===i ? {...x, load_kg: e.target.value} : x))}
-                          placeholder="kg" type="number" style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: "6px", color: T.text, fontSize: "12px", padding: "7px 8px", outline: "none", fontFamily: "inherit" }} />
+                          placeholder={wLabel} type="number" style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: "6px", color: T.text, fontSize: "12px", padding: "7px 8px", outline: "none", fontFamily: "inherit" }} />
                         <button onClick={() => setSessionLogExercises(p => p.filter((_,j) => j!==i))} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", fontSize: "14px", padding: 0 }}>×</button>
                       </div>
                       {/* Exercise history */}
@@ -3055,7 +3133,7 @@ export default function DashboardClient() {
                         <div style={{ paddingLeft: "6px", marginTop: "4px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
                           {exHistory[i].slice(0, 4).map((h, hi) => (
                             <span key={hi} style={{ fontSize: "10px", color: T.muted, background: T.surface2, border: `1px solid ${T.border}`, borderRadius: "4px", padding: "2px 7px" }}>
-                              {h.date.slice(5)} — {h.sets}×{h.reps}{h.load_kg ? ` @ ${h.load_kg}kg` : ""}
+                              {h.date.slice(5)} — {h.sets}×{h.reps}{h.load_kg ? ` @ ${formatWeight(h.load_kg, unitSystem)}` : ""}
                             </span>
                           ))}
                         </div>
@@ -3393,31 +3471,169 @@ export default function DashboardClient() {
         </div>
       )}
 
-      {/* ── MARK DONE MODAL ── */}
-      {doneModal && (
-        <div onClick={e => e.target === e.currentTarget && setDoneModal(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: "14px", padding: "28px", width: "420px", maxWidth: "100%" }}>
-            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.6rem", letterSpacing: "0.04em", marginBottom: "6px" }}>MARK DONE</div>
-            <p style={{ fontSize: "13px", color: T.muted, marginBottom: "16px" }}>Any notes? (optional)</p>
-            <textarea
-              value={doneNotes}
-              onChange={e => setDoneNotes(e.target.value)}
-              placeholder="How it went, load, shoulder, anything…"
-              rows={3}
-              style={{ width: "100%", background: T.surface2, border: `1px solid ${T.border}`, borderRadius: "8px", color: T.text, fontFamily: "inherit", fontSize: "13px", padding: "10px 12px", resize: "vertical", outline: "none", boxSizing: "border-box" }}
+      {/* ── RESCHEDULE MODAL ── */}
+      {rescheduleId && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
+        }} onClick={() => setRescheduleId(null)}>
+          <div style={{
+            background: T.surface, borderRadius: "16px", padding: "24px",
+            width: "100%", maxWidth: "340px", display: "flex", flexDirection: "column", gap: "16px",
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.1rem", letterSpacing: "0.06em" }}>
+              Move Session
+            </div>
+            <p style={{ fontSize: "13px", color: T.muted, margin: 0, lineHeight: 1.6 }}>
+              Pick a new date. The session will move and your calendar feed will update automatically.
+            </p>
+            <input
+              type="date"
+              value={rescheduleDate}
+              onChange={e => setRescheduleDate(e.target.value)}
+              min={data?.today}
+              style={{
+                background: T.bg, border: `1px solid ${T.border}`, borderRadius: "8px",
+                color: T.text, fontSize: "15px", padding: "10px 14px", outline: "none",
+                fontFamily: "inherit", width: "100%", boxSizing: "border-box",
+              }}
             />
-            <div style={{ display: "flex", gap: "8px", marginTop: "14px", justifyContent: "flex-end" }}>
-              <button onClick={() => setDoneModal(false)} style={{ background: "transparent", border: `1px solid ${T.border}`, borderRadius: "8px", color: T.muted, cursor: "pointer", fontFamily: "inherit", fontSize: "13px", padding: "9px 16px" }}>
-                Cancel
-              </button>
-              <button onClick={markDone} style={{ background: T.accent, border: "none", borderRadius: "8px", color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", fontWeight: 700, padding: "9px 24px", letterSpacing: "0.06em" }}>
-                CONFIRM
-              </button>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => setRescheduleId(null)}
+                style={{
+                  flex: 1, padding: "11px", borderRadius: "8px", cursor: "pointer",
+                  background: "transparent", border: `1px solid ${T.border}`, color: T.muted, fontSize: "13px",
+                }}
+              >Cancel</button>
+              <button
+                onClick={rescheduleSession}
+                disabled={!rescheduleDate}
+                style={{
+                  flex: 2, padding: "11px", borderRadius: "8px", cursor: "pointer",
+                  background: T.accent, border: "none", color: T.bg,
+                  fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", letterSpacing: "0.06em",
+                  opacity: rescheduleDate ? 1 : 0.4,
+                }}
+              >CONFIRM MOVE</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── MARK DONE MODAL ── */}
+      {doneModal && (() => {
+        const isFoundation = data?.block && (
+          data.block.name?.toLowerCase().includes("foundation") || (data.block.week && data.block.week <= 4)
+        );
+        const likedTags = ["Volume felt right", "Good exercise selection", "Felt challenged", "Good pacing", "Energy was high", "Enjoyed the session"];
+        const dislikedTags = ["Too much volume", "Too easy", "Too hard", "Wrong exercises", "Took too long", "Low energy", "Something hurt"];
+        const toggleTag = (tag: string, set: Set<string>, setter: (s: Set<string>) => void) => {
+          const next = new Set(set);
+          next.has(tag) ? next.delete(tag) : next.add(tag);
+          setter(next);
+        };
+        return (
+          <div onClick={e => e.target === e.currentTarget && setDoneModal(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: "14px", padding: "28px", width: "480px", maxWidth: "100%", maxHeight: "90dvh", overflowY: "auto" }}>
+              <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "1.6rem", letterSpacing: "0.04em", marginBottom: "4px" }}>SESSION DONE</div>
+              {isFoundation && (
+                <p style={{ fontSize: "12px", color: T.accent, marginBottom: "20px", letterSpacing: "0.04em" }}>
+                  FOUNDATION WEEK — your feedback shapes the program
+                </p>
+              )}
+
+              {/* RPE */}
+              <div style={{ marginBottom: "20px" }}>
+                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, marginBottom: "10px" }}>How hard was it? (RPE)</p>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                    <button key={n} onClick={() => setDoneFeedbackRpe(n === doneFeedbackRpe ? null : n)}
+                      style={{
+                        flex: 1, padding: "8px 0", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 600,
+                        background: doneFeedbackRpe === n ? T.accent : T.surface2,
+                        color: doneFeedbackRpe === n ? T.bg : n >= 8 ? "#f85149" : n >= 5 ? T.text : T.muted,
+                      }}>{n}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Energy */}
+              <div style={{ marginBottom: "20px" }}>
+                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, marginBottom: "10px" }}>Energy level</p>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  {(["Low", "Medium", "High"] as const).map(e => (
+                    <button key={e} onClick={() => setDoneFeedbackEnergy(doneFeedbackEnergy === e.toLowerCase() ? null : e.toLowerCase())}
+                      style={{
+                        flex: 1, padding: "9px", borderRadius: "8px", border: `1px solid ${T.border}`, cursor: "pointer", fontSize: "13px",
+                        background: doneFeedbackEnergy === e.toLowerCase() ? T.accentDim : "transparent",
+                        color: doneFeedbackEnergy === e.toLowerCase() ? T.accent : T.muted,
+                      }}>{e}</button>
+                  ))}
+                </div>
+              </div>
+
+              {isFoundation && (
+                <>
+                  {/* Liked */}
+                  <div style={{ marginBottom: "16px" }}>
+                    <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, marginBottom: "10px" }}>What worked</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {likedTags.map(tag => (
+                        <button key={tag} onClick={() => toggleTag(tag, doneFeedbackLiked, setDoneFeedbackLiked)}
+                          style={{
+                            padding: "6px 12px", borderRadius: "20px", border: `1px solid ${doneFeedbackLiked.has(tag) ? T.accent : T.border}`,
+                            background: doneFeedbackLiked.has(tag) ? T.accentDim : "transparent",
+                            color: doneFeedbackLiked.has(tag) ? T.accent : T.muted,
+                            cursor: "pointer", fontSize: "12px",
+                          }}>{tag}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Disliked */}
+                  <div style={{ marginBottom: "16px" }}>
+                    <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, marginBottom: "10px" }}>What didn't work</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {dislikedTags.map(tag => (
+                        <button key={tag} onClick={() => toggleTag(tag, doneFeedbackDisliked, setDoneFeedbackDisliked)}
+                          style={{
+                            padding: "6px 12px", borderRadius: "20px", border: `1px solid ${doneFeedbackDisliked.has(tag) ? "#f85149" : T.border}`,
+                            background: doneFeedbackDisliked.has(tag) ? "rgba(248,81,73,0.1)" : "transparent",
+                            color: doneFeedbackDisliked.has(tag) ? "#f85149" : T.muted,
+                            cursor: "pointer", fontSize: "12px",
+                          }}>{tag}</button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Notes */}
+              <div style={{ marginBottom: "20px" }}>
+                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.muted, marginBottom: "8px" }}>Notes (optional)</p>
+                <textarea
+                  value={doneNotes}
+                  onChange={e => setDoneNotes(e.target.value)}
+                  placeholder={isFoundation ? "Anything else Franklin should know about this session..." : "How it went, load, anything..."}
+                  rows={2}
+                  style={{ width: "100%", background: T.surface2, border: `1px solid ${T.border}`, borderRadius: "8px", color: T.text, fontFamily: "inherit", fontSize: "13px", padding: "10px 12px", resize: "vertical", outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                <button onClick={() => setDoneModal(false)} style={{ background: "transparent", border: `1px solid ${T.border}`, borderRadius: "8px", color: T.muted, cursor: "pointer", fontFamily: "inherit", fontSize: "13px", padding: "9px 16px" }}>
+                  Cancel
+                </button>
+                <button onClick={markDone} style={{ background: T.accent, border: "none", borderRadius: "8px", color: T.bg, cursor: "pointer", fontFamily: "'BebasNeue', sans-serif", fontSize: "1rem", fontWeight: 700, padding: "9px 24px", letterSpacing: "0.06em" }}>
+                  CONFIRM
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── MOBILE BOTTOM TAB BAR ── */}
       {isMobile && (

@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const athleteId = await getAthleteId();
   if (!athleteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { notes, sessionDate } = await req.json();
+  const { notes, sessionDate, feedback } = await req.json();
   const sb = createServerClient();
   const today = new Date().toISOString().split("T")[0];
 
@@ -43,6 +43,30 @@ export async function POST(req: NextRequest) {
       const entries = [...(scratchRes.data.entries || []), { time, note: `[Done] ${notes}` }];
       await sb.from("session_scratch").update({ entries, scratch_status: "processed" })
         .eq("id", scratchRes.data.id);
+    }
+  }
+
+  // Save structured workout feedback to session_logs if provided
+  if (feedback && typeof feedback === "object") {
+    const existingLog = await sb.from("session_logs").select("id")
+      .eq("athlete_id", athleteId)
+      .eq("log_date", dateToMark)
+      .maybeSingle();
+
+    if (existingLog.data) {
+      await sb.from("session_logs")
+        .update({ workout_feedback: feedback })
+        .eq("id", existingLog.data.id);
+    } else {
+      // Create a minimal log record to hold the feedback
+      await sb.from("session_logs").insert({
+        athlete_id: athleteId,
+        log_date: dateToMark,
+        session_type: "other",
+        workout_feedback: feedback,
+        notes: feedback.notes || null,
+        rpe_overall: feedback.rpe || null,
+      });
     }
   }
 
