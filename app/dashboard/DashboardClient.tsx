@@ -421,7 +421,7 @@ export default function DashboardClient() {
     });
     setRescheduleId(null);
     setRescheduleDate("");
-    mutate();
+    fetchData();
   }
 
   async function markDone() {
