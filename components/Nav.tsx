@@ -25,7 +25,7 @@ export default function Nav() {
           <a href="#einkapjalfun" className="text-sm nav-link">
             Einkaþjálfun
           </a>
-          <a href="/dashboard/login" className="text-sm nav-link">
+          <a href="/login" className="text-sm nav-link">
             360 Heilsa Online Coach
           </a>
         </div>

@@ -659,7 +659,7 @@ export default function OnboardingClient() {
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "48px 24px 24px" }}>
             {/* Coach identity row */}
             <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "28px" }}>
-              <img src="/logo-heilsa.png" alt="360" style={{ height: "48px", width: "48px", objectFit: "contain", flexShrink: 0 }} />
+              <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "40px", width: "auto", flexShrink: 0 }} />
               <div>
                 <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "22px", letterSpacing: "0.08em", color: T.text, lineHeight: 1.1 }}>COACH FRANKLIN</div>
                 <div style={{ fontSize: "11px", letterSpacing: "0.1em", color: T.muted, textTransform: "uppercase", marginTop: "3px" }}>Elite Performance System</div>
@@ -735,10 +735,10 @@ export default function OnboardingClient() {
 
     // Desktop intro
     return (
-      <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+      <div style={{ ...baseScreen, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px", backgroundColor: T.bg }}>
         <div style={{ ...desktopCard, display: "flex", flexDirection: "column", padding: "48px 40px", gap: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <img src="/logo-heilsa.png" alt="360" style={{ height: "52px", width: "52px", objectFit: "contain", flexShrink: 0 }} />
+            <img src="/logo-heilsa.png" alt="360 Heilsa" style={{ height: "44px", width: "auto", flexShrink: 0 }} />
             <div>
               <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "24px", letterSpacing: "0.08em", color: T.text, lineHeight: 1.1 }}>COACH FRANKLIN</div>
               <div style={{ fontFamily: "'BebasNeue', sans-serif", fontSize: "0.85rem", letterSpacing: "0.1em", color: T.muted, marginTop: "3px" }}>

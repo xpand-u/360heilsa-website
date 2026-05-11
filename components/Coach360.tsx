@@ -46,7 +46,7 @@ export default function Coach360() {
               þinnar líkamsbyggingar og þess sem er að koma í veg fyrir það í dag.
             </p>
 
-            <a href="/dashboard/login" className="btn-accent">
+            <a href="/login" className="btn-accent">
               HEFJA ÁSKRIFT
             </a>
             <p className="mt-4 text-xs" style={{ color: "var(--muted)" }}>
